@@ -10,6 +10,10 @@ class Evaluator:
             'Precision@5': 0.0,
             'Precision@10': 0.0,
             'Recall@10': 0.0,
+            'User Coverage': 0.0,
+            'Catalog Coverage': 0.0,
+            'Diversity': 0.0,
+            'Avg Rec Rating': 0.0,
             'Evaluated': False
         }
 
@@ -28,6 +32,12 @@ class Evaluator:
         
         p5_list, p10_list, r10_list = [], [], []
         
+        # New metrics tracking
+        successful_users = 0
+        all_recommended_items = set()
+        diversity_scores = []
+        rec_ratings = []
+        
         for user_id in sample_users:
             user_ratings = ratings_df[ratings_df['UserID'] == user_id]
             
@@ -37,16 +47,42 @@ class Evaluator:
                 
             train_u, test_u = train_test_split(user_ratings, test_size=0.2, random_state=42)
             
-            # Find a movie the user liked in train to use as query
+            # Find movies the user liked in train to use as queries
             liked_movies = train_u[train_u['Rating'] >= 4.0]['MovieID'].tolist()
             if not liked_movies:
                 continue
                 
-            query_movie = liked_movies[0]
+            # Randomly sample up to 3 liked movies
+            query_movies = np.random.choice(liked_movies, size=min(3, len(liked_movies)), replace=False)
             
-            # Get recommendations
-            recs, _ = self.recommender.get_recommendations(query_movie, n=10)
-            rec_ids = [r['MovieID'] for r in recs]
+            aggregated_recs = {}
+            for query_movie in query_movies:
+                recs, _ = self.recommender.get_recommendations(query_movie, n=10)
+                for r in recs:
+                    mid = r['MovieID']
+                    if mid not in aggregated_recs or r.get('similarity', 0) > aggregated_recs[mid].get('similarity', 0):
+                        aggregated_recs[mid] = r
+            
+            if not aggregated_recs:
+                continue
+                
+            # Sort aggregated recommendations by similarity descending
+            sorted_recs = sorted(aggregated_recs.values(), key=lambda x: x.get('similarity', 0), reverse=True)
+            top_10_recs = sorted_recs[:10]
+            rec_ids = [r['MovieID'] for r in top_10_recs]
+            
+            successful_users += 1
+            
+            # Track catalog coverage & diversity
+            genres_set = set()
+            for r in top_10_recs:
+                all_recommended_items.add(r['MovieID'])
+                if 'Genres' in r and isinstance(r['Genres'], str):
+                    genres_set.update(r['Genres'].split('|'))
+                if 'AvgRating' in r:
+                    rec_ratings.append(r['AvgRating'])
+                    
+            diversity_scores.append(len(genres_set))
             
             # Relevant movies in test set (liked by user)
             relevant_test_movies = set(test_u[test_u['Rating'] >= 4.0]['MovieID'].tolist())
@@ -68,6 +104,13 @@ class Evaluator:
         self.metrics['Precision@5'] = np.mean(p5_list) if p5_list else 0.0
         self.metrics['Precision@10'] = np.mean(p10_list) if p10_list else 0.0
         self.metrics['Recall@10'] = np.mean(r10_list) if r10_list else 0.0
+        
+        self.metrics['User Coverage'] = successful_users / len(sample_users) if sample_users.size > 0 else 0.0
+        total_movies = self.recommender.stats.get('movies', 1)
+        self.metrics['Catalog Coverage'] = len(all_recommended_items) / total_movies if total_movies > 0 else 0.0
+        self.metrics['Diversity'] = np.mean(diversity_scores) if diversity_scores else 0.0
+        self.metrics['Avg Rec Rating'] = np.mean(rec_ratings) if rec_ratings else 0.0
+        
         self.metrics['Evaluated'] = True
         
         return True

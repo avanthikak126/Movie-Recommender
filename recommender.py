@@ -141,13 +141,22 @@ class Recommender:
         query_time = time.perf_counter() - start_time
         
         recommendations = []
+        if len(indices[0]) > 1:
+            min_local_dist = distances[0][1]
+            max_local_dist = distances[0][-1]
+            
         for i in range(1, len(indices[0])):
             rec_idx = indices[0][i]
             rec_movie_id = self.movie_index_to_id[rec_idx]
             dist = distances[0][i]
             
-            max_dist = np.sqrt(self.matrix.shape[1] * (5**2))
-            sim_score = max(0, 100 - (dist / max_dist * 100 * 2))
+            # Normalize distances relative to the returned recommendation set
+            # Min-Max scaler projecting to a highly relevant 80%-99% range
+            if max_local_dist == min_local_dist:
+                sim_score = 99
+            else:
+                norm_dist = (dist - min_local_dist) / (max_local_dist - min_local_dist)
+                sim_score = 99 - (norm_dist * 19)
             
             movie_details = self.get_movie_details(rec_movie_id)
             if movie_details:

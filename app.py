@@ -178,7 +178,7 @@ with tab1:
                     st.markdown(f"**{rec['Title']}**")
                     st.markdown(f"**Genres:** {rec['Genres']}")
                     st.markdown(f"⭐ {rec['AvgRating']:.1f}/5")
-                    st.markdown(f"**Score:** {rec['similarity']}%")
+                    st.markdown(f"🎯 **Similarity:** {rec['similarity']}%")
                     
             # TMDB COMPARISON
             st.markdown("### ⚖️ Comparison with TMDB Similar Movies")
@@ -263,10 +263,10 @@ with tab3:
 
 with tab4:
     st.header("Formal Validation")
-    st.markdown("Evaluating the recommendation system using Precision and Recall metrics over a sample of active users.")
+    st.markdown("Evaluating the recommendation system using comprehensive metrics over a sample of active users.")
     
     if not st.session_state.evaluator.metrics['Evaluated']:
-        if st.button("Run Evaluation on Sample Data"):
+        if st.button("Run Formal Evaluation"):
             with st.spinner("Evaluating model... This might take a minute."):
                 st.session_state.evaluator.evaluate(sample_size=50)
                 st.rerun()
@@ -274,15 +274,33 @@ with tab4:
         m = st.session_state.evaluator.metrics
         st.success("Evaluation Complete!")
         
+        st.markdown("### Ranking Metrics")
         c1, c2, c3 = st.columns(3)
-        c1.metric("Precision@5", f"{m['Precision@5']:.4f}")
-        c2.metric("Precision@10", f"{m['Precision@10']:.4f}")
-        c3.metric("Recall@10", f"{m['Recall@10']:.4f}")
+        c1.metric("Precision@5", f"{m.get('Precision@5', 0)*100:.1f}%")
+        c2.metric("Precision@10", f"{m.get('Precision@10', 0)*100:.1f}%")
+        c3.metric("Recall@10", f"{m.get('Recall@10', 0)*100:.1f}%")
         
-        st.plotly_chart(analytics.plot_precision_metrics(m), use_container_width=True)
+        st.markdown("### System Metrics")
+        c4, c5, c6, c7 = st.columns(4)
+        c4.metric("User Coverage", f"{m.get('User Coverage', 0)*100:.1f}%")
+        c5.metric("Catalog Coverage", f"{m.get('Catalog Coverage', 0)*100:.1f}%")
+        c6.metric("Diversity", f"{m.get('Diversity', 0):.1f}")
+        c7.metric("Avg Rec Rating", f"{m.get('Avg Rec Rating', 0):.2f}/5")
         
-        st.markdown("### Interpretation")
+        st.markdown("---")
+        st.markdown("### Metrics Overview")
+        st.plotly_chart(analytics.plot_advanced_validation_metrics(m), use_container_width=True)
+        
+        st.markdown("### Methodology & Interpretation")
         st.info("""
-        - **Precision@K**: The fraction of recommended items in the top-K set that are relevant.
-        - **Recall@K**: The fraction of relevant items that are successfully recommended in the top-K set.
+        **Methodology**:
+        We sample highly active users and split their ratings into a 80% train and 20% test set. For each user, we sample up to 3 liked movies from the train set and query the Ball Tree. The recommendations are aggregated, deduplicated, and ranked by their maximum similarity score to form a final Top 10 list. We then check these recommendations against the unseen 20% test set.
+        
+        **Metrics**:
+        - **Precision@K**: The percentage of recommended items in the top-K set that the user actually liked.
+        - **Recall@K**: The percentage of relevant items that are successfully recommended in the top-K set.
+        - **User Coverage**: The percentage of sampled users for whom we successfully generated recommendations.
+        - **Catalog Coverage**: The percentage of the entire movie catalog that was recommended at least once.
+        - **Recommendation Diversity**: The average number of distinct genres represented in a user's top 10 recommendations.
+        - **Average Recommended Rating**: The global mean rating of the recommended items.
         """)
