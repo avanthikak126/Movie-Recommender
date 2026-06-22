@@ -125,12 +125,6 @@ with tab1:
     # --- SEARCH BAR ---
     all_movies = recommender.movies_df['Title'].tolist()
     
-    rec_mode = st.selectbox(
-        "Recommendation Mode",
-        options=["Collaborative Filtering", "Content-Based Filtering", "Hybrid Recommendation"],
-        index=2
-    )
-    
     col1, col2 = st.columns([3, 1])
     with col1:
         selected_title = st.selectbox(
@@ -178,14 +172,43 @@ with tab1:
                 
         # RECOMMENDATIONS
         st.markdown("### 🎬 Recommended for You")
+        st.markdown("🟣 **Hybrid AI Recommendations**")
+        st.caption("This recommendation engine combines user-rating behavior and movie-content similarity to produce more accurate and diverse recommendations.")
         
-        if rec_mode == "Collaborative Filtering":
-            recs, _ = recommender.get_recommendations(selected_m['MovieID'])
-        elif rec_mode == "Content-Based Filtering":
-            recs = content_recommender.get_content_recommendations(selected_m['MovieID'])
+        collab_recs, _ = recommender.get_recommendations(selected_m['MovieID'], n=100)
+        content_recs = content_recommender.get_content_recommendations(selected_m['MovieID'], n=100)
+        
+        # Min-Max scale both sets to 0-100 so weights apply fairly
+        raw_collab = {r['MovieID']: r['similarity'] for r in collab_recs}
+        if raw_collab:
+            c_min, c_max = min(raw_collab.values()), max(raw_collab.values())
+            collab_map = {k: 100 * (v - c_min) / (c_max - c_min) if c_max > c_min else 100 for k, v in raw_collab.items()}
         else:
-            st.info("Hybrid Recommendation is not implemented yet. Showing Collaborative Filtering results.")
-            recs, _ = recommender.get_recommendations(selected_m['MovieID'])
+            collab_map = {}
+            
+        raw_content = {r['MovieID']: r['Content Similarity Score'] for r in content_recs}
+        if raw_content:
+            cont_min, cont_max = min(raw_content.values()), max(raw_content.values())
+            content_map = {k: 100 * (v - cont_min) / (cont_max - cont_min) if cont_max > cont_min else 100 for k, v in raw_content.items()}
+        else:
+            content_map = {}
+        
+        all_ids = set(collab_map.keys()).union(set(content_map.keys()))
+        hybrid_recs = []
+        
+        for mid in all_ids:
+            c_score = collab_map.get(mid, 0)
+            cont_score = content_map.get(mid, 0)
+            
+            hybrid_score = (0.7 * c_score) + (0.3 * cont_score)
+            
+            movie_dict = recommender.get_movie_details(mid)
+            if movie_dict:
+                movie_dict['similarity'] = int(hybrid_score)
+                hybrid_recs.append(movie_dict)
+                
+        hybrid_recs.sort(key=lambda x: x['similarity'], reverse=True)
+        recs = hybrid_recs[:10]
         
         if recs:
             cols = st.columns(5)
