@@ -6,6 +6,7 @@ from tmdb import tmdb_client
 from evaluation import Evaluator
 import utils
 import analytics
+from auth import add_to_watchlist
 
 # Initialize Configuration and CSS
 utils.set_page_config()
@@ -296,13 +297,26 @@ with tab1:
                         m_row = recommender.movies_df[recommender.movies_df['MovieID'] == rec['MovieID']]
                         avg_rating = m_row.iloc[0]['AvgRating'] if not m_row.empty else 0
                     st.markdown(f"⭐ {avg_rating:.1f}/5")
-                    
+
                     sim = rec.get('similarity')
                     if sim is not None:
                         st.markdown(f"🎯 **Similarity:** {sim}%")
                     else:
                         c_sim = rec.get('Content Similarity Score', 0)
                         st.markdown(f"🎯 **Similarity:** {int(c_sim * 100)}%")
+
+                    if st.button( "⭐ Add to Watchlist",
+                        key=f"watch_{rec['MovieID']}"
+                    ):
+                        if "username" in st.session_state:
+                            add_to_watchlist(
+                                st.session_state["username"],
+                                rec["MovieID"],
+                                rec["Title"]
+                            )
+                            st.success("Added to Watchlist!")
+                        else:
+                            st.warning("Please login first.")
 
                     with st.expander("Why Recommended?"):
                         render_why_recommended(rec)

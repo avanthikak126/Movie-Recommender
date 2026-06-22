@@ -5,7 +5,7 @@ def set_page_config():
         page_title="RECFLIX",
         page_icon="🎬",
         layout="wide",
-        initial_sidebar_state="collapsed"
+        initial_sidebar_state="expanded"
     )
 
 def inject_custom_css():

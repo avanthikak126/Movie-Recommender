@@ -5,15 +5,9 @@ import os
 
 load_dotenv()
 
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-
 DATABASE_URL = (
-    f"postgresql://{DB_USER}:{DB_PASSWORD}@"
-    f"{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
+    f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 )
 
 engine = create_engine(DATABASE_URL)
@@ -45,7 +39,8 @@ def login_user(username, password):
     with engine.connect() as conn:
         result = conn.execute(
             text("""
-                SELECT * FROM users
+                SELECT *
+                FROM users
                 WHERE username = :username
             """),
             {
@@ -67,3 +62,54 @@ def login_user(username, password):
             return user
 
         return None
+
+
+def add_to_watchlist(username, movie_id, movie_title):
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO watchlist
+                (username, movie_id, movie_title)
+                VALUES
+                (:username, :movie_id, :movie_title)
+            """),
+            {
+                "username": username,
+                "movie_id": movie_id,
+                "movie_title": movie_title
+            }
+        )
+
+        conn.commit()
+
+
+def get_watchlist(username):
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                SELECT *
+                FROM watchlist
+                WHERE username = :username
+                ORDER BY id DESC
+            """),
+            {
+                "username": username
+            }
+        )
+
+        return result.fetchall()
+
+
+def remove_from_watchlist(watchlist_id):
+    with engine.connect() as conn:
+        conn.execute(
+            text("""
+                DELETE FROM watchlist
+                WHERE id = :id
+            """),
+            {
+                "id": watchlist_id
+            }
+        )
+
+        conn.commit()
