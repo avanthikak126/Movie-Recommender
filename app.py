@@ -6,7 +6,6 @@ from tmdb import tmdb_client
 from evaluation import Evaluator
 import utils
 import analytics
-import requests
 
 # Initialize Configuration and CSS
 utils.set_page_config()
@@ -40,30 +39,17 @@ if 'evaluator' not in st.session_state:
 
 # --- HELPER: VALIDATED POSTER RENDERING ---
 @st.cache_data(show_spinner=False)
-def validate_poster_url(url):
-    """Cache the URL validation so we don't delay Streamlit reruns."""
-    if not url or "via.placeholder.com" in url:
-        return True # Placeholder is assumed valid
-    try:
-        resp = requests.head(url, timeout=2)
-        return resp.status_code == 200
-    except:
-        return False
+def get_cached_tmdb_movie_details(title):
+    return tmdb_client.get_movie_details(title)
+
+
+@st.cache_data(show_spinner=False)
+def get_cached_tmdb_similar_movies(tmdb_id):
+    return tmdb_client.get_similar_movies(tmdb_id)
 
 def render_poster(title, poster_url):
-    print(f"Movie: {title}")
-    print(f"Poster URL: {poster_url}")
-    print(f"Render Attempt: Yes")
-    
-    is_valid = validate_poster_url(poster_url)
-    
-    if is_valid:
-        print(f"Render Success: Yes\n")
-        st.image(poster_url, use_container_width=True)
-    else:
-        print(f"Render Success: No (URL invalid or 404. Falling back to placeholder)\n")
-        fallback_url = "https://via.placeholder.com/500x750/1d1e26/e50914?text=No+Poster+Found"
-        st.image(fallback_url, use_container_width=True)
+    fallback_url = "https://via.placeholder.com/500x750/1d1e26/e50914?text=No+Poster+Found"
+    st.image(poster_url or fallback_url, use_container_width=True)
 
 def _get_shared_genres(source_genres, target_genres):
     if not source_genres or not target_genres:
@@ -235,7 +221,7 @@ with tab1:
         
         # Details & Poster
         col_img, col_info = st.columns([1, 2])
-        tmdb_data = tmdb_client.get_movie_details(selected_m['Title'])
+        tmdb_data = get_cached_tmdb_movie_details(selected_m['Title'])
         
         with col_img:
             render_poster(selected_m['Title'], tmdb_data['poster_url'])
@@ -296,7 +282,7 @@ with tab1:
         if recs:
             cols = st.columns(5)
             
-            rec_tmdbs = [tmdb_client.get_movie_details(r['Title']) for r in recs[:5]]
+            rec_tmdbs = [get_cached_tmdb_movie_details(r['Title']) for r in recs[:5]]
             
             for i, rec in enumerate(recs[:5]):
                 rec_tmdb = rec_tmdbs[i]
@@ -379,7 +365,7 @@ with tab1:
         if recs:
             # TMDB COMPARISON
             st.markdown("### ⚖️ Comparison with TMDB Similar Movies")
-            tmdb_similar = tmdb_client.get_similar_movies(tmdb_data.get('id'))
+            tmdb_similar = get_cached_tmdb_similar_movies(tmdb_data.get('id'))
             
             if tmdb_similar:
                 t_cols = st.columns(5)
@@ -395,7 +381,7 @@ with tab1:
     trending = recommender.get_trending(5)
     cols = st.columns(5)
     
-    trending_tmdbs = [tmdb_client.get_movie_details(t['Title']) for t in trending]
+    trending_tmdbs = [get_cached_tmdb_movie_details(t['Title']) for t in trending]
     
     for i, t_movie in enumerate(trending):
         t_tmdb = trending_tmdbs[i]
@@ -409,7 +395,7 @@ with tab1:
         st.markdown("### 🕒 Recently Searched")
         r_cols = st.columns(5)
         for i, r_movie in enumerate(st.session_state.recent_searches):
-            r_tmdb = tmdb_client.get_movie_details(r_movie['Title'])
+            r_tmdb = get_cached_tmdb_movie_details(r_movie['Title'])
             with r_cols[i]:
                 render_poster(r_movie['Title'], r_tmdb['poster_url'])
                 st.markdown(f"**{r_movie['Title']}**")
