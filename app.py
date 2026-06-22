@@ -17,6 +17,12 @@ if 'recent_searches' not in st.session_state:
     st.session_state.recent_searches = []
 if 'selected_movie' not in st.session_state:
     st.session_state.selected_movie = None
+if 'show_performance_benchmark' not in st.session_state:
+    st.session_state.show_performance_benchmark = False
+if 'benchmark_movie_id' not in st.session_state:
+    st.session_state.benchmark_movie_id = None
+if 'benchmark_results' not in st.session_state:
+    st.session_state.benchmark_results = None
 
 # Load Data and Build Model once via Streamlit cache
 recommender = get_cached_recommender()
@@ -211,6 +217,9 @@ with tab1:
         with st.spinner("Finding Similar Movies..."):
             selected_movie = recommender.movies_df[recommender.movies_df['Title'] == selected_title].iloc[0].to_dict()
             st.session_state.selected_movie = selected_movie
+            st.session_state.show_performance_benchmark = False
+            st.session_state.benchmark_movie_id = None
+            st.session_state.benchmark_results = None
             if selected_movie not in st.session_state.recent_searches:
                 st.session_state.recent_searches.insert(0, selected_movie)
                 if len(st.session_state.recent_searches) > 5:
@@ -312,10 +321,31 @@ with tab1:
                     with st.expander("Why Recommended?"):
                         render_why_recommended(rec)
 
-        benchmark = recommender.benchmark_query_performance(selected_m['MovieID'], n=100)
-        if benchmark:
-            st.markdown("---")
-            st.markdown("### ⚡ Recommendation Engine Performance")
+        if st.button("⚡ Run Performance Benchmark", use_container_width=False, key="run_benchmark_btn"):
+            st.session_state.show_performance_benchmark = True
+            st.session_state.benchmark_movie_id = selected_m['MovieID']
+            with st.spinner("Running Ball Tree vs Brute Force benchmark..."):
+                st.session_state.benchmark_results = recommender.benchmark_query_performance(
+                    selected_m['MovieID'], n=100
+                )
+
+        if (
+            st.session_state.show_performance_benchmark
+            and st.session_state.benchmark_movie_id == selected_m['MovieID']
+            and st.session_state.benchmark_results
+        ):
+            benchmark = st.session_state.benchmark_results
+            title_col, close_col = st.columns([6, 1])
+            with title_col:
+                st.markdown("### ⚡ Recommendation Engine Performance")
+            with close_col:
+                st.write("")
+                if st.button("✕ Close", key="close_benchmark_btn", use_container_width=True):
+                    st.session_state.show_performance_benchmark = False
+                    st.session_state.benchmark_movie_id = None
+                    st.session_state.benchmark_results = None
+                    st.rerun()
+
             st.caption(
                 f"Nearest-neighbor search benchmark for **{selected_m['Title']}** "
                 f"across {recommender.stats['movies']:,} movies."
