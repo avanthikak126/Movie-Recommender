@@ -24,6 +24,68 @@ if 'benchmark_movie_id' not in st.session_state:
 if 'benchmark_results' not in st.session_state:
     st.session_state.benchmark_results = None
 
+
+def render_auth_landing_page():
+    st.markdown("""
+<div class="hero-section">
+    <div class="hero-spotlight"></div>
+    <div class="hero-particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+    <div class="hero-content">
+        <div class="hero-badge">🎬 Movie Recommendations Engine</div>
+        <h1 class="hero-title">RECFLIX</h1>
+        <p class="hero-subtitle">Discover Your Next Favorite Movie</p>
+        <p class="hero-description">
+            Sign in to unlock personalized recommendations,<br>
+            analytics, watchlists, and TMDB comparisons.
+        </p>
+    </div>
+    <div class="hero-glow"></div>
+</div>
+""", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="max-width: 820px; margin: 0 auto 1.25rem auto; text-align: center;">
+        <p style="font-size: 1.05rem; line-height: 1.7; color: rgba(255,255,255,0.82);">
+            Welcome to RECFLIX, a cinematic recommendation experience powered by
+            collaborative filtering, content signals, and real-time TMDB data.
+            Log in or create an account to start exploring.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    login_col, signup_col = st.columns(2)
+    with login_col:
+        if st.button("Login", use_container_width=True):
+            st.switch_page("pages/login.py")
+    with signup_col:
+        if st.button("Sign Up", use_container_width=True):
+            st.switch_page("pages/Signup.py")
+
+    st.stop()
+
+
+if "username" not in st.session_state:
+    render_auth_landing_page()
+
+# Only show sidebar if user is authenticated
+if "username" in st.session_state:
+    with st.sidebar:
+        st.markdown("### Account")
+        st.caption(f"Signed in as **{st.session_state['username']}**")
+        st.page_link("pages/watchlist.py", label="Watchlist", icon="⭐")
+        if st.button("Logout", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
+
 # Load Data and Build Model once via Streamlit cache
 recommender = get_cached_recommender()
 
@@ -309,12 +371,15 @@ with tab1:
                         key=f"watch_{rec['MovieID']}"
                     ):
                         if "username" in st.session_state:
-                            add_to_watchlist(
+                            added = add_to_watchlist(
                                 st.session_state["username"],
                                 rec["MovieID"],
                                 rec["Title"]
                             )
-                            st.success("Added to Watchlist!")
+                            if added:
+                                st.success("Added to Watchlist!")
+                            else:
+                                st.info("Movie already in Watchlist")
                         else:
                             st.warning("Please login first.")
 

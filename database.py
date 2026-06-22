@@ -21,6 +21,11 @@ with engine.connect() as conn:
         )
     """))
 
+    conn.execute(text("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_watchlist_user_movie_unique
+        ON watchlist (username, movie_id)
+    """))
+
     conn.commit()
 
 print("Watchlist table created!")

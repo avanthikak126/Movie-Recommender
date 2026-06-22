@@ -65,13 +65,28 @@ def login_user(username, password):
 
 
 def add_to_watchlist(username, movie_id, movie_title):
-    with engine.connect() as conn:
+    with engine.begin() as conn:
+        existing = conn.execute(
+            text("""
+                SELECT 1
+                FROM watchlist
+                WHERE username = :username
+                AND movie_id = :movie_id
+                LIMIT 1
+            """),
+            {
+                "username": username,
+                "movie_id": movie_id
+            }
+        ).fetchone()
+
+        if existing:
+            return False
+
         conn.execute(
             text("""
-                INSERT INTO watchlist
-                (username, movie_id, movie_title)
-                VALUES
-                (:username, :movie_id, :movie_title)
+                INSERT INTO watchlist (username, movie_id, movie_title)
+                VALUES (:username, :movie_id, :movie_title)
             """),
             {
                 "username": username,
@@ -80,7 +95,7 @@ def add_to_watchlist(username, movie_id, movie_title):
             }
         )
 
-        conn.commit()
+        return True
 
 
 def get_watchlist(username):

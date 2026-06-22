@@ -3,10 +3,21 @@ from auth import create_user
 
 st.title("Create Account")
 
-username = st.text_input("Username")
-email = st.text_input("Email")
-password = st.text_input("Password", type="password")
 
-if st.button("Sign Up"):
-    create_user(username, email, password)
-    st.success("Account created successfully!")
+if "username" in st.session_state:
+    st.switch_page("app.py")
+
+with st.form("signup_form"):
+    username = st.text_input("Username")
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+    submitted = st.form_submit_button("Sign Up")
+
+if submitted:
+    try:
+        create_user(username, email, password)
+    except Exception:
+        st.error("Unable to create account. Please try a different username or email.")
+    else:
+        st.session_state["signup_success_message"] = "Account created successfully! Please log in."
+        st.switch_page("pages/login.py")

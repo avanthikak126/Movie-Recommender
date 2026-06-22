@@ -13,7 +13,7 @@ html, body, [class*="css"] {
 /* --- Streamlit Overrides --- */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
-header {visibility: hidden;}
+header {visibility: visible; background: transparent;}
 
 .stApp {
     background-color: #08080d;
