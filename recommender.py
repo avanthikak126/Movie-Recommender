@@ -168,6 +168,32 @@ class Recommender:
         self.recommendation_cache[movie_id] = recommendations
         return recommendations, query_time
 
+    def benchmark_query_performance(self, movie_id, n=100):
+        """Time Ball Tree vs brute-force nearest-neighbor search without altering results."""
+        if movie_id not in self.movie_id_to_index:
+            return None
+
+        idx = self.movie_id_to_index[movie_id]
+        query_vector = self.matrix[idx].reshape(1, -1)
+        k = min(n + 1, self.matrix.shape[0])
+
+        start_time = time.perf_counter()
+        self.ball_tree.query(query_vector, k=k)
+        ball_tree_time = time.perf_counter() - start_time
+
+        start_time = time.perf_counter()
+        distances = np.linalg.norm(self.matrix - query_vector, axis=1)
+        np.argsort(distances)[:k]
+        brute_force_time = time.perf_counter() - start_time
+
+        speedup = brute_force_time / ball_tree_time if ball_tree_time > 0 else 0.0
+
+        return {
+            'ball_tree_time': ball_tree_time,
+            'brute_force_time': brute_force_time,
+            'speedup': speedup,
+        }
+
     @st.cache_data(ttl=3600*24)
     def get_trending(_self, limit=10):
         popular_movies = _self.ratings_df.groupby('MovieID').size().reset_index(name='counts')

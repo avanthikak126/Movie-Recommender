@@ -311,7 +311,42 @@ with tab1:
 
                     with st.expander("Why Recommended?"):
                         render_why_recommended(rec)
-                    
+
+        benchmark = recommender.benchmark_query_performance(selected_m['MovieID'], n=100)
+        if benchmark:
+            st.markdown("---")
+            st.markdown("### ⚡ Recommendation Engine Performance")
+            st.caption(
+                f"Nearest-neighbor search benchmark for **{selected_m['Title']}** "
+                f"across {recommender.stats['movies']:,} movies."
+            )
+
+            b1, b2, b3 = st.columns(3)
+            b1.metric(
+                "Ball Tree",
+                f"{benchmark['ball_tree_time']:.3f} sec",
+                help="Time to retrieve nearest neighbors using the Ball Tree index.",
+            )
+            b2.metric(
+                "Brute Force",
+                f"{benchmark['brute_force_time']:.3f} sec",
+                help="Time to scan every movie vector and sort by Euclidean distance.",
+            )
+            b3.metric(
+                "Speedup",
+                f"{benchmark['speedup']:.1f}x Faster",
+                help="How many times faster Ball Tree is compared to brute force.",
+            )
+
+            st.plotly_chart(
+                analytics.plot_query_benchmark(
+                    benchmark['ball_tree_time'],
+                    benchmark['brute_force_time'],
+                ),
+                use_container_width=True,
+            )
+
+        if recs:
             # TMDB COMPARISON
             st.markdown("### ⚖️ Comparison with TMDB Similar Movies")
             tmdb_similar = tmdb_client.get_similar_movies(tmdb_data.get('id'))

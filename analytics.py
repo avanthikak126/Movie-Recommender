@@ -121,3 +121,29 @@ def plot_advanced_validation_metrics(metrics):
         margin=dict(l=40, r=40, t=40, b=40)
     )
     return fig
+
+def plot_query_benchmark(ball_tree_time, brute_force_time):
+    df = pd.DataFrame({
+        'Method': ['Ball Tree', 'Brute Force'],
+        'Time (sec)': [ball_tree_time, brute_force_time],
+    })
+
+    fig = px.bar(
+        df,
+        x='Method',
+        y='Time (sec)',
+        title='Query Execution Time Comparison',
+        color='Method',
+        color_discrete_map={'Ball Tree': '#46d369', 'Brute Force': '#e50914'},
+        text=[f'{ball_tree_time:.3f}s', f'{brute_force_time:.3f}s'],
+    )
+    fig.update_traces(textposition='outside')
+    fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font_color='white',
+        showlegend=False,
+        yaxis_title='Execution Time (seconds)',
+        xaxis_title='',
+    )
+    return fig
