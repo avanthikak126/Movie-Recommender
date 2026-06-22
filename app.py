@@ -59,6 +59,75 @@ def render_poster(title, poster_url):
         fallback_url = "https://via.placeholder.com/500x750/1d1e26/e50914?text=No+Poster+Found"
         st.image(fallback_url, use_container_width=True)
 
+def _get_shared_genres(source_genres, target_genres):
+    if not source_genres or not target_genres:
+        return []
+    return sorted(set(source_genres.split('|')) & set(target_genres.split('|')))
+
+def _similarity_bar(pct):
+    pct = max(0, min(100, int(pct)))
+    filled = round(pct / 10)
+    return "█" * filled + "░" * (10 - filled)
+
+def render_why_recommended(rec):
+    collab = rec.get('Collaborative Score', 0)
+    content = rec.get('Content Similarity Score', 0)
+    hybrid = rec.get('Hybrid Score', rec.get('similarity', 0))
+    shared_genres = rec.get('_shared_genres', [])
+    genre_badges = ''.join(
+        f'<span class="why-genre-badge">{g}</span>' for g in shared_genres
+    )
+    bar = _similarity_bar(hybrid)
+
+    st.markdown(f"""
+<div class="why-recommended-panel">
+    <div class="why-reason-list">
+        <div class="why-reason-item">
+            <span class="why-check">✓</span>
+            <span class="why-reason-badge collab-badge">👥</span>
+            Similar user rating patterns detected
+        </div>
+        <div class="why-reason-item">
+            <span class="why-check">✓</span>
+            <span class="why-reason-badge genre-badge">🎭</span>
+            Similar genres identified
+            {f'<div class="why-genre-row">{genre_badges}</div>' if genre_badges else ''}
+        </div>
+        <div class="why-reason-item">
+            <span class="why-check">✓</span>
+            <span class="why-reason-badge tree-badge">🌳</span>
+            Retrieved using Ball Tree nearest-neighbor search
+        </div>
+        <div class="why-reason-item">
+            <span class="why-check">✓</span>
+            <span class="why-reason-badge hybrid-badge">⚡</span>
+            Ranked using Hybrid Recommendation scoring
+        </div>
+    </div>
+    <div class="why-score-grid">
+        <div class="why-score-card">
+            <span class="why-score-icon">👥</span>
+            <span class="why-score-label">Collaborative Score</span>
+            <span class="why-score-value">{collab:.1f}</span>
+        </div>
+        <div class="why-score-card">
+            <span class="why-score-icon">🎬</span>
+            <span class="why-score-label">Content Similarity Score</span>
+            <span class="why-score-value">{content:.1f}</span>
+        </div>
+        <div class="why-score-card highlight">
+            <span class="why-score-icon">⚡</span>
+            <span class="why-score-label">Hybrid Score</span>
+            <span class="why-score-value">{hybrid:.0f}</span>
+        </div>
+    </div>
+    <div class="why-similarity-section">
+        <div class="why-similarity-label">🎯 Similarity: {hybrid:.0f}%</div>
+        <div class="why-similarity-bar">{bar}</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 # --- CINEMATIC HERO BANNER ---
 st.markdown("""
 <div class="hero-section">
@@ -196,6 +265,7 @@ with tab1:
         all_ids = set(collab_map.keys()).union(set(content_map.keys()))
         hybrid_recs = []
         
+        source_genres = selected_m.get('Genres', '')
         for mid in all_ids:
             c_score = collab_map.get(mid, 0)
             cont_score = content_map.get(mid, 0)
@@ -204,7 +274,11 @@ with tab1:
             
             movie_dict = recommender.get_movie_details(mid)
             if movie_dict:
+                movie_dict['Collaborative Score'] = c_score
+                movie_dict['Content Similarity Score'] = cont_score
+                movie_dict['Hybrid Score'] = hybrid_score
                 movie_dict['similarity'] = int(hybrid_score)
+                movie_dict['_shared_genres'] = _get_shared_genres(source_genres, movie_dict.get('Genres', ''))
                 hybrid_recs.append(movie_dict)
                 
         hybrid_recs.sort(key=lambda x: x['similarity'], reverse=True)
@@ -234,6 +308,9 @@ with tab1:
                     else:
                         c_sim = rec.get('Content Similarity Score', 0)
                         st.markdown(f"🎯 **Similarity:** {int(c_sim * 100)}%")
+
+                    with st.expander("Why Recommended?"):
+                        render_why_recommended(rec)
                     
             # TMDB COMPARISON
             st.markdown("### ⚖️ Comparison with TMDB Similar Movies")

@@ -380,6 +380,140 @@ header {visibility: hidden;}
     color: #fff;
 }
 
+.why-recommended-panel {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 4px;
+}
+
+.why-reason-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.why-reason-item {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.88);
+    line-height: 1.45;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.why-check {
+    color: #46d369;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.why-reason-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+}
+
+.collab-badge { background: rgba(66, 133, 244, 0.22); }
+.genre-badge  { background: rgba(156, 39, 176, 0.22); }
+.tree-badge   { background: rgba(76, 175, 80, 0.22); }
+.hybrid-badge { background: rgba(229, 9, 20, 0.28); }
+
+.why-genre-row {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 2px 0 0 28px;
+}
+
+.why-genre-badge {
+    background: rgba(156, 39, 176, 0.18);
+    color: #ce93d8;
+    border: 1px solid rgba(156, 39, 176, 0.35);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.why-score-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.why-score-card {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+.why-score-card.highlight {
+    border-color: rgba(229, 9, 20, 0.35);
+    background: rgba(229, 9, 20, 0.08);
+}
+
+.why-score-icon {
+    font-size: 0.9rem;
+}
+
+.why-score-label {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 600;
+}
+
+.why-score-value {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.why-score-card.highlight .why-score-value {
+    color: #ff6b6b;
+}
+
+.why-similarity-section {
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.why-similarity-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #ffd700;
+    margin-bottom: 6px;
+}
+
+.why-similarity-bar {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    color: #e50914;
+    text-shadow: 0 0 8px rgba(229, 9, 20, 0.45);
+    line-height: 1;
+}
+
 
 /* ==========================================
    TABS
