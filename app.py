@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from recommender import get_cached_recommender
+from content_recommender import ContentRecommender
 from tmdb import tmdb_client
 from evaluation import Evaluator
 import utils
@@ -19,6 +20,14 @@ if 'selected_movie' not in st.session_state:
 
 # Load Data and Build Model once via Streamlit cache
 recommender = get_cached_recommender()
+
+@st.cache_resource(show_spinner="Building Content Engine...")
+def get_cached_content_recommender():
+    rec = ContentRecommender()
+    rec.build_model()
+    return rec
+
+content_recommender = get_cached_content_recommender()
 
 if 'evaluator' not in st.session_state:
     st.session_state.evaluator = Evaluator(recommender)
@@ -116,6 +125,12 @@ with tab1:
     # --- SEARCH BAR ---
     all_movies = recommender.movies_df['Title'].tolist()
     
+    rec_mode = st.selectbox(
+        "Recommendation Mode",
+        options=["Collaborative Filtering", "Content-Based Filtering", "Hybrid Recommendation"],
+        index=2
+    )
+    
     col1, col2 = st.columns([3, 1])
     with col1:
         selected_title = st.selectbox(
@@ -164,7 +179,13 @@ with tab1:
         # RECOMMENDATIONS
         st.markdown("### 🎬 Recommended for You")
         
-        recs, _ = recommender.get_recommendations(selected_m['MovieID'])
+        if rec_mode == "Collaborative Filtering":
+            recs, _ = recommender.get_recommendations(selected_m['MovieID'])
+        elif rec_mode == "Content-Based Filtering":
+            recs = content_recommender.get_content_recommendations(selected_m['MovieID'])
+        else:
+            st.info("Hybrid Recommendation is not implemented yet. Showing Collaborative Filtering results.")
+            recs, _ = recommender.get_recommendations(selected_m['MovieID'])
         
         if recs:
             cols = st.columns(5)
@@ -177,8 +198,19 @@ with tab1:
                     render_poster(rec['Title'], rec_tmdb['poster_url'])
                     st.markdown(f"**{rec['Title']}**")
                     st.markdown(f"**Genres:** {rec['Genres']}")
-                    st.markdown(f"⭐ {rec['AvgRating']:.1f}/5")
-                    st.markdown(f"🎯 **Similarity:** {rec['similarity']}%")
+                    
+                    avg_rating = rec.get('AvgRating')
+                    if avg_rating is None:
+                        m_row = recommender.movies_df[recommender.movies_df['MovieID'] == rec['MovieID']]
+                        avg_rating = m_row.iloc[0]['AvgRating'] if not m_row.empty else 0
+                    st.markdown(f"⭐ {avg_rating:.1f}/5")
+                    
+                    sim = rec.get('similarity')
+                    if sim is not None:
+                        st.markdown(f"🎯 **Similarity:** {sim}%")
+                    else:
+                        c_sim = rec.get('Content Similarity Score', 0)
+                        st.markdown(f"🎯 **Similarity:** {int(c_sim * 100)}%")
                     
             # TMDB COMPARISON
             st.markdown("### ⚖️ Comparison with TMDB Similar Movies")
