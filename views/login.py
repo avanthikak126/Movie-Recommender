@@ -1,15 +1,11 @@
 import streamlit as st
 from auth import login_user
-import utils
-
-utils.set_page_config()
-utils.inject_custom_css()
 
 st.title("Login")
 
 
 if "username" in st.session_state:
-    st.switch_page("app.py")
+    st.rerun()
 
 if "signup_success_message" in st.session_state:
     st.success(st.session_state.pop("signup_success_message"))
@@ -25,7 +21,7 @@ if submitted:
     if user:
         st.session_state["username"] = username
         st.session_state["logged_in"] = True
-        st.switch_page("app.py")
+        st.rerun()
 
     else:
         st.error("Invalid username or password")

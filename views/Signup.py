@@ -1,15 +1,11 @@
 import streamlit as st
 from auth import create_user
-import utils
-
-utils.set_page_config()
-utils.inject_custom_css()
 
 st.title("Create Account")
 
 
 if "username" in st.session_state:
-    st.switch_page("app.py")
+    st.rerun()
 
 with st.form("signup_form"):
     username = st.text_input("Username")
@@ -24,4 +20,4 @@ if submitted:
         st.error("Unable to create account. Please try a different username or email.")
     else:
         st.session_state["signup_success_message"] = "Account created successfully! Please log in."
-        st.switch_page("pages/login.py")
+        st.switch_page("views/login.py")
