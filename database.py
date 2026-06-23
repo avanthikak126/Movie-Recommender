@@ -13,6 +13,20 @@ engine = create_engine(DATABASE_URL)
 
 with engine.connect() as conn:
     conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            failed_login_attempts INTEGER DEFAULT 0,
+            locked_until TIMESTAMP
+        )
+    """))
+
+    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER DEFAULT 0"))
+    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP"))
+
+    conn.execute(text("""
         CREATE TABLE IF NOT EXISTS watchlist (
             id SERIAL PRIMARY KEY,
             username VARCHAR(50),

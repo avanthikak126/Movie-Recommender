@@ -16,12 +16,14 @@ with st.form("login_form"):
     submitted = st.form_submit_button("Login")
 
 if submitted:
-    user = login_user(username, password)
+    try:
+        user = login_user(username, password)
 
-    if user:
-        st.session_state["username"] = username
-        st.session_state["logged_in"] = True
-        st.rerun()
-
-    else:
-        st.error("Invalid username or password")
+        if user:
+            st.session_state["username"] = username
+            st.session_state["logged_in"] = True
+            st.rerun()
+        else:
+            st.error("Invalid username or password")
+    except PermissionError as e:
+        st.error(str(e))
