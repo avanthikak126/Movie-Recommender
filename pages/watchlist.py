@@ -1,5 +1,10 @@
 import streamlit as st
 from auth import get_watchlist, remove_from_watchlist
+import utils
+
+utils.set_page_config()
+utils.inject_custom_css()
+utils.render_sidebar()
 
 st.title("⭐ My Watchlist")
 

@@ -1,5 +1,9 @@
 import streamlit as st
 from auth import login_user
+import utils
+
+utils.set_page_config()
+utils.inject_custom_css()
 
 st.title("Login")
 

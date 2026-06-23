@@ -73,18 +73,12 @@ def render_auth_landing_page():
     st.stop()
 
 
+# Only show sidebar if user is authenticated
 if "username" not in st.session_state:
     render_auth_landing_page()
 
 # Only show sidebar if user is authenticated
-if "username" in st.session_state:
-    with st.sidebar:
-        st.markdown("### Account")
-        st.caption(f"Signed in as **{st.session_state['username']}**")
-        st.page_link("pages/watchlist.py", label="Watchlist", icon="⭐")
-        if st.button("Logout", use_container_width=True):
-            st.session_state.clear()
-            st.rerun()
+utils.render_sidebar()
 
 # Load Data and Build Model once via Streamlit cache
 recommender = get_cached_recommender()
