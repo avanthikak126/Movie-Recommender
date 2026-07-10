@@ -7,7 +7,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 DATA_DIR = "data/ml-1m"
 
-@st.cache_data(show_spinner="Loading content data...")
+@st.cache_resource(show_spinner="Loading content data...")
 def load_content_data():
     try:
         logging.info("Starting load_content_data")

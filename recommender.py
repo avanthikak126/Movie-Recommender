@@ -9,7 +9,7 @@ import streamlit as st
 
 DATA_DIR = "data/ml-1m"
 
-@st.cache_data(show_spinner="Loading collaborative data...")
+@st.cache_resource(show_spinner="Loading collaborative data...")
 def load_collaborative_data():
     try:
         logging.info("Starting load_collaborative_data")
@@ -32,7 +32,9 @@ def load_collaborative_data():
             ratings_path, 
             sep="::", 
             engine='python', 
-            names=['UserID', 'MovieID', 'Rating', 'Timestamp']
+            names=['UserID', 'MovieID', 'Rating', 'Timestamp'],
+            usecols=['UserID', 'MovieID', 'Rating'],
+            dtype={'UserID': np.int32, 'MovieID': np.int32, 'Rating': np.float32}
         )
         
         avg_ratings = ratings_df.groupby('MovieID')['Rating'].mean().reset_index()
@@ -40,7 +42,7 @@ def load_collaborative_data():
         movies_df.rename(columns={'Rating': 'AvgRating'}, inplace=True)
         
         pivot_df = ratings_df.pivot(index='MovieID', columns='UserID', values='Rating').fillna(0)
-        matrix = np.ascontiguousarray(pivot_df.values.astype(np.float64))
+        matrix = np.ascontiguousarray(pivot_df.values.astype(np.float32))
         movie_ids = pivot_df.index.tolist()
         
         logging.info("Finished load_collaborative_data successfully")
