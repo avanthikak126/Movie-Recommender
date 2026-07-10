@@ -12,15 +12,12 @@ from auth import add_to_watchlist
 
 
 # Load Data and Build Model once via Streamlit cache
-recommender = get_cached_recommender()
+# TEMPORARY DEBUG TEST
+recommender = None
+content_recommender = None
 
-@st.cache_resource(show_spinner="Building Content Engine...")
-def get_cached_content_recommender():
-    rec = ContentRecommender()
-    rec.build_model()
-    return rec
-
-content_recommender = get_cached_content_recommender()
+st.write("✅ Page loaded successfully")
+st.stop()
 
 if 'evaluator' not in st.session_state:
     st.session_state.evaluator = Evaluator(recommender)
@@ -200,11 +197,11 @@ with tab1:
                     st.session_state.recent_searches.pop()
             
             logging.info(f"UI: Getting initial recommendations for {selected_movie['Title']}")
-
-            st.success("Movie selected successfully.")
-
-# STOP HERE FOR DEBUGGING
-            st.stop()
+            recs, _ = recommender.get_recommendations(selected_movie['MovieID'])
+            logging.info(f"UI: Initial recommendations completed, fetching TMDB for top 5")
+            for r in recs[:5]:
+                tmdb_client.get_movie_details(r['Title'])
+            logging.info("UI: TMDB initial fetch completed")
 
     if st.session_state.selected_movie:
         selected_m = st.session_state.selected_movie
