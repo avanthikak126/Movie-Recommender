@@ -1,8 +1,8 @@
 streamlit
-pandas==2.2.2
+pandas
 numpy<2.0.0
-scikit-learn==1.4.2
-scipy==1.13.0
+scikit-learn
+scipy
 plotly
 requests
 python-dotenv
