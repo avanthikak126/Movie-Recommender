@@ -22,19 +22,7 @@ def get_cached_content_recommender():
     rec.build_model()
     return rec
 
-print("HOME: Before creating ContentRecommender")
-
-rec = ContentRecommender()
-
-print("HOME: ContentRecommender object created")
-
-content_recommender = rec
-
-print("HOME: Before build_model()")
-
-content_recommender.build_model()
-
-print("HOME: After build_model()")
+content_recommender = get_cached_content_recommender()
 
 if 'evaluator' not in st.session_state:
     st.session_state.evaluator = Evaluator(recommender)
