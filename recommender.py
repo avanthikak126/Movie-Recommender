@@ -144,10 +144,7 @@ class Recommender:
 
             logging.info("Executing BallTree query")
             with threadpool_limits(limits=1):
-                print("Reached recommendation query")
-
-# TEMPORARY TEST
-            return [], 0.0
+              distances, indices = self.ball_tree.query(query_vector, k=n+1)
             logging.info("BallTree query executed successfully")
 
             query_time = time.perf_counter() - start_time
