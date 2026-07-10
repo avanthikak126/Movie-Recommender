@@ -104,15 +104,6 @@ class Recommender:
         n_samples = self.matrix.shape[0]
         self.stats['nodes'] = int(2 * (n_samples / self.stats['leaf_size']) - 1)
         self.stats['height'] = int(np.log2(self.stats['nodes'])) if self.stats['nodes'] > 0 else 0
-        
-        with open(matrix_path, 'wb') as f: pickle.dump(self.matrix, f)
-        with open(tree_path, 'wb') as f: pickle.dump(self.ball_tree, f)
-        with open(metadata_path, 'wb') as f:
-            pickle.dump({
-                'index_to_id': self.movie_index_to_id,
-                'id_to_index': self.movie_id_to_index,
-                'stats': self.stats
-            }, f)
             
         return True
 
