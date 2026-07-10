@@ -200,11 +200,11 @@ with tab1:
                     st.session_state.recent_searches.pop()
             
             logging.info(f"UI: Getting initial recommendations for {selected_movie['Title']}")
-            recs, _ = recommender.get_recommendations(selected_movie['MovieID'])
-            logging.info(f"UI: Initial recommendations completed, fetching TMDB for top 5")
-            for r in recs[:5]:
-                tmdb_client.get_movie_details(r['Title'])
-            logging.info("UI: TMDB initial fetch completed")
+
+            st.success("Movie selected successfully.")
+
+# STOP HERE FOR DEBUGGING
+            st.stop()
 
     if st.session_state.selected_movie:
         selected_m = st.session_state.selected_movie
