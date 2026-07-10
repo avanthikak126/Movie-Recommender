@@ -3,12 +3,11 @@ import requests
 import json
 import re
 import difflib
-from dotenv import load_dotenv
 import streamlit as st
 
-load_dotenv()
+from config import get_tmdb_api_key
 
-TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+TMDB_API_KEY = get_tmdb_api_key()
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 
