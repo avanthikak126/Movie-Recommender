@@ -141,37 +141,42 @@ class Recommender:
             query_vector = np.ascontiguousarray(self.matrix[idx].reshape(1, -1))
             
             start_time = time.perf_counter()
-            
+
             logging.info("Executing BallTree query")
             with threadpool_limits(limits=1):
-                distances, indices = self.ball_tree.query(query_vector, k=n+1)
+                print("Reached recommendation query")
+
+# TEMPORARY TEST
+            return [], 0.0
             logging.info("BallTree query executed successfully")
-                
+
             query_time = time.perf_counter() - start_time
-            
+
             logging.info("Processing recommendation results")
             recommendations = []
             if len(indices[0]) > 1:
                 min_local_dist = distances[0][1]
                 max_local_dist = distances[0][-1]
-                
+            else:
+                min_local_dist = max_local_dist = 0.0
+
             for i in range(1, len(indices[0])):
                 rec_idx = indices[0][i]
                 rec_movie_id = self.movie_index_to_id[rec_idx]
                 dist = distances[0][i]
-                
+
                 if max_local_dist == min_local_dist:
                     sim_score = 99
                 else:
                     norm_dist = (dist - min_local_dist) / (max_local_dist - min_local_dist)
                     sim_score = 99 - (norm_dist * 19)
-                
+
                 movie_details = self.get_movie_details(rec_movie_id)
                 if movie_details:
                     movie_details['distance'] = float(dist)
                     movie_details['similarity'] = int(sim_score)
                     recommendations.append(movie_details)
-                    
+
             self.recommendation_cache[movie_id] = recommendations
             logging.info(f"Finished get_recommendations for movie_id: {movie_id}")
             return recommendations, query_time
