@@ -80,9 +80,9 @@ class Recommender:
             start_time = time.time()
             logging.info("Pivoting ratings dataframe")
             pivot_df = self.ratings_df.pivot(index='MovieID', columns='UserID', values='Rating').fillna(0)
-            # Use float32 instead of float64 to halve the memory footprint to ~88MB
-            logging.info("Converting pivot table to float32 matrix")
-            self.matrix = pivot_df.values.astype(np.float32)
+            # Use float64 and force C-contiguous to avoid memory mapping and alignment issues in Cython BallTree.
+            logging.info("Converting pivot table to float64 contiguous matrix")
+            self.matrix = np.ascontiguousarray(pivot_df.values.astype(np.float64))
             movie_ids = pivot_df.index.tolist()
             
             self.movie_index_to_id = {idx: mid for idx, mid in enumerate(movie_ids)}
@@ -137,8 +137,8 @@ class Recommender:
                 return [], 0.0
                 
             idx = self.movie_id_to_index[movie_id]
-            logging.info("Reshaping query vector")
-            query_vector = self.matrix[idx].reshape(1, -1)
+            logging.info("Reshaping query vector and ensuring contiguity")
+            query_vector = np.ascontiguousarray(self.matrix[idx].reshape(1, -1))
             
             start_time = time.perf_counter()
             
@@ -221,10 +221,9 @@ class Recommender:
             return []
 
 
+@st.cache_resource(show_spinner="Building Global Recommendation Engine...")
 def get_cached_recommender():
-    if 'core_recommender' not in st.session_state:
-        rec = Recommender()
-        rec.load_data()
-        rec.build_model()
-        st.session_state['core_recommender'] = rec
-    return st.session_state['core_recommender']
+    rec = Recommender()
+    rec.load_data()
+    rec.build_model()
+    return rec
