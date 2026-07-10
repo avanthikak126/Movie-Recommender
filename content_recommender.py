@@ -43,6 +43,9 @@ class ContentRecommender:
             
     def build_model(self):
         try:
+            print("STEP 2: Inside build_model")
+            return True # TEST 2: Bypass TF-IDF
+            
             logging.info("Starting build_model for ContentRecommender")
             if self.movies_df is None:
                 logging.info("Data not loaded, calling load_data()")

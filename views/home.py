@@ -236,7 +236,9 @@ with tab1:
         logging.info("UI: Starting hybrid recommendations (collab n=100)")
         collab_recs, _ = recommender.get_recommendations(selected_m['MovieID'], n=100)
         logging.info("UI: Starting content recommendations (content n=100)")
-        content_recs = content_recommender.get_content_recommendations(selected_m['MovieID'], n=100)
+        # TEST 1: Isolate Initialization vs Query
+        # content_recs = content_recommender.get_content_recommendations(selected_m['MovieID'], n=100)
+        content_recs = []
         logging.info("UI: Recommendations retrieved, blending results")
         
         # Min-Max scale both sets to 0-100 so weights apply fairly
