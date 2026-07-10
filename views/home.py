@@ -203,7 +203,9 @@ with tab1:
                     st.session_state.recent_searches.pop()
             
             logging.info(f"UI: Getting initial recommendations for {selected_movie['Title']}")
-            recs, _ = recommender.get_recommendations(selected_movie['MovieID'])
+            # TEST 6: Bypass recommender
+            # recs, _ = recommender.get_recommendations(selected_movie['MovieID'])
+            recs = []
             logging.info(f"UI: Initial recommendations completed, fetching TMDB for top 5")
             for r in recs[:5]:
                 tmdb_client.get_movie_details(r['Title'])
@@ -235,7 +237,9 @@ with tab1:
         st.caption("This recommendation engine combines user-rating behavior and movie-content similarity to produce more accurate and diverse recommendations.")
         
         logging.info("UI: Starting hybrid recommendations (collab n=100)")
-        collab_recs, _ = recommender.get_recommendations(selected_m['MovieID'], n=100)
+        # TEST 6: Bypass recommender
+        # collab_recs, _ = recommender.get_recommendations(selected_m['MovieID'], n=100)
+        collab_recs = []
         logging.info("UI: Starting content recommendations (content n=100)")
         # TEST 1: Isolate Initialization vs Query
         # content_recs = content_recommender.get_content_recommendations(selected_m['MovieID'], n=100)
