@@ -1,5 +1,6 @@
 import streamlit as st
 import utils
+import database
 
 # Initialize Configuration and CSS
 utils.set_page_config()
