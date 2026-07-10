@@ -96,7 +96,9 @@ class Recommender:
         non_zero = np.count_nonzero(self.matrix)
         self.stats['sparsity'] = (1.0 - (non_zero / total_elements)) * 100
         
-        self.ball_tree = BallTree(self.matrix, leaf_size=self.stats['leaf_size'], metric='euclidean')
+        from threadpoolctl import threadpool_limits
+        with threadpool_limits(limits=1):
+            self.ball_tree = BallTree(self.matrix, leaf_size=self.stats['leaf_size'], metric='euclidean')
         self.stats['build_time'] = time.time() - start_time
         
         n_samples = self.matrix.shape[0]

@@ -40,8 +40,9 @@ class ContentRecommender:
         vectorizer = TfidfVectorizer()
         self.tfidf_matrix = vectorizer.fit_transform(self.movies_df['Content'])
         
-        # Compute cosine similarity between all movies
-        self.cosine_sim = cosine_similarity(self.tfidf_matrix, self.tfidf_matrix)
+        from threadpoolctl import threadpool_limits
+        with threadpool_limits(limits=1):
+            self.cosine_sim = cosine_similarity(self.tfidf_matrix, self.tfidf_matrix)
         
         # Mapping from MovieID to DataFrame index
         self.movie_id_to_index = {
