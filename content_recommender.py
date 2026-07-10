@@ -3,7 +3,6 @@ import pandas as pd
 import logging
 import traceback
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
 DATA_DIR = "data/ml-1m"
 
@@ -84,8 +83,8 @@ class ContentRecommender:
             
             # Compute pairwise similarity scores on the fly for just this movie
             # This takes virtually no memory and is very fast
-            logging.info("Computing cosine similarity vector")
-            cosine_sim_vector = cosine_similarity(self.tfidf_matrix[idx], self.tfidf_matrix).flatten()
+            logging.info("Computing cosine similarity vector using SciPy dot product")
+            cosine_sim_vector = self.tfidf_matrix[idx].dot(self.tfidf_matrix.T).toarray().flatten()
             
             sim_scores = list(enumerate(cosine_sim_vector))
             
