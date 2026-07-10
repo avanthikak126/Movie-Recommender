@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 import logging
+import traceback
 from sklearn.neighbors import BallTree
 import time
 import streamlit as st
@@ -33,12 +34,15 @@ class Recommender:
 
     def load_data(self):
         try:
+            logging.info("Starting load_data for Recommender")
             movies_path = os.path.join(DATA_DIR, "movies.dat")
             ratings_path = os.path.join(DATA_DIR, "ratings.dat")
             
             if not os.path.exists(movies_path) or not os.path.exists(ratings_path):
+                logging.error(f"Data files missing: {movies_path} or {ratings_path}")
                 return False
                 
+            logging.info(f"Loading movies from {movies_path}")
             self.movies_df = pd.read_csv(
                 movies_path, 
                 sep="::", 
@@ -47,6 +51,7 @@ class Recommender:
                 encoding='latin-1'
             )
             
+            logging.info(f"Loading ratings from {ratings_path}")
             self.ratings_df = pd.read_csv(
                 ratings_path, 
                 sep="::", 
@@ -58,20 +63,25 @@ class Recommender:
             self.stats['users'] = self.ratings_df['UserID'].nunique()
             self.stats['ratings'] = len(self.ratings_df)
             
+            logging.info("Calculating average ratings")
             avg_ratings = self.ratings_df.groupby('MovieID')['Rating'].mean().reset_index()
             self.movies_df = pd.merge(self.movies_df, avg_ratings, on='MovieID', how='left').fillna(0)
             self.movies_df.rename(columns={'Rating': 'AvgRating'}, inplace=True)
             
+            logging.info("Successfully finished load_data for Recommender")
             return True
         except Exception:
-            logging.exception("Failed to load MovieLens data.")
+            logging.exception(f"Failed to load MovieLens data: {traceback.format_exc()}")
             return False
 
     def build_model(self):
         try:
+            logging.info("Starting build_model for Recommender")
             start_time = time.time()
+            logging.info("Pivoting ratings dataframe")
             pivot_df = self.ratings_df.pivot(index='MovieID', columns='UserID', values='Rating').fillna(0)
             # Use float32 instead of float64 to halve the memory footprint to ~88MB
+            logging.info("Converting pivot table to float32 matrix")
             self.matrix = pivot_df.values.astype(np.float32)
             movie_ids = pivot_df.index.tolist()
             
@@ -83,8 +93,11 @@ class Recommender:
             non_zero = np.count_nonzero(self.matrix)
             self.stats['sparsity'] = (1.0 - (non_zero / total_elements)) * 100
             
+            logging.info(f"Matrix built with shape: {self.stats['matrix_dims']} and sparsity: {self.stats['sparsity']}%")
+            logging.info("Constructing BallTree...")
             with threadpool_limits(limits=1):
                 self.ball_tree = BallTree(self.matrix, leaf_size=self.stats['leaf_size'], metric='euclidean')
+            logging.info("BallTree successfully constructed")
                 
             self.stats['build_time'] = time.time() - start_time
             
@@ -92,9 +105,10 @@ class Recommender:
             self.stats['nodes'] = int(2 * (n_samples / self.stats['leaf_size']) - 1)
             self.stats['height'] = int(np.log2(self.stats['nodes'])) if self.stats['nodes'] > 0 else 0
                 
+            logging.info("Finished build_model successfully")
             return True
         except Exception:
-            logging.exception("Failed to build BallTree model.")
+            logging.exception(f"Failed to build BallTree model: {traceback.format_exc()}")
             return False
 
     def get_movie_details(self, movie_id):
@@ -113,22 +127,29 @@ class Recommender:
 
     def get_recommendations(self, movie_id, n=10):
         try:
+            logging.info(f"Starting get_recommendations for movie_id: {movie_id}")
             if movie_id in self.recommendation_cache:
+                logging.info(f"Returning cached recommendations for movie_id: {movie_id}")
                 return self.recommendation_cache[movie_id], 0.0
 
             if movie_id not in self.movie_id_to_index:
+                logging.warning(f"Movie ID {movie_id} not found in index")
                 return [], 0.0
                 
             idx = self.movie_id_to_index[movie_id]
+            logging.info("Reshaping query vector")
             query_vector = self.matrix[idx].reshape(1, -1)
             
             start_time = time.perf_counter()
             
+            logging.info("Executing BallTree query")
             with threadpool_limits(limits=1):
                 distances, indices = self.ball_tree.query(query_vector, k=n+1)
+            logging.info("BallTree query executed successfully")
                 
             query_time = time.perf_counter() - start_time
             
+            logging.info("Processing recommendation results")
             recommendations = []
             if len(indices[0]) > 1:
                 min_local_dist = distances[0][1]
@@ -152,9 +173,10 @@ class Recommender:
                     recommendations.append(movie_details)
                     
             self.recommendation_cache[movie_id] = recommendations
+            logging.info(f"Finished get_recommendations for movie_id: {movie_id}")
             return recommendations, query_time
         except Exception:
-            logging.exception(f"Failed to get recommendations for movie ID: {movie_id}")
+            logging.exception(f"Failed to get recommendations for movie ID: {movie_id}. Traceback: {traceback.format_exc()}")
             return [], 0.0
 
     def benchmark_query_performance(self, movie_id, n=100):

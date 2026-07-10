@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import logging
 from recommender import get_cached_recommender
 from content_recommender import ContentRecommender
 from tmdb import tmdb_client
@@ -198,9 +199,12 @@ with tab1:
                 if len(st.session_state.recent_searches) > 5:
                     st.session_state.recent_searches.pop()
             
+            logging.info(f"UI: Getting initial recommendations for {selected_movie['Title']}")
             recs, _ = recommender.get_recommendations(selected_movie['MovieID'])
+            logging.info(f"UI: Initial recommendations completed, fetching TMDB for top 5")
             for r in recs[:5]:
                 tmdb_client.get_movie_details(r['Title'])
+            logging.info("UI: TMDB initial fetch completed")
 
     if st.session_state.selected_movie:
         selected_m = st.session_state.selected_movie
@@ -208,6 +212,7 @@ with tab1:
         
         # Details & Poster
         col_img, col_info = st.columns([1, 2])
+        logging.info(f"UI: Fetching TMDB details for selected movie {selected_m['Title']}")
         tmdb_data = get_cached_tmdb_movie_details(selected_m['Title'])
         
         with col_img:
@@ -226,8 +231,11 @@ with tab1:
         st.markdown("🟣 **Hybrid AI Recommendations**")
         st.caption("This recommendation engine combines user-rating behavior and movie-content similarity to produce more accurate and diverse recommendations.")
         
+        logging.info("UI: Starting hybrid recommendations (collab n=100)")
         collab_recs, _ = recommender.get_recommendations(selected_m['MovieID'], n=100)
+        logging.info("UI: Starting content recommendations (content n=100)")
         content_recs = content_recommender.get_content_recommendations(selected_m['MovieID'], n=100)
+        logging.info("UI: Recommendations retrieved, blending results")
         
         # Min-Max scale both sets to 0-100 so weights apply fairly
         raw_collab = {r['MovieID']: r['similarity'] for r in collab_recs}
@@ -269,7 +277,9 @@ with tab1:
         if recs:
             cols = st.columns(5)
             
+            logging.info("UI: Fetching TMDB details for hybrid recommendations")
             rec_tmdbs = [get_cached_tmdb_movie_details(r['Title']) for r in recs[:5]]
+            logging.info("UI: TMDB details fetched, rendering grid")
             
             for i, rec in enumerate(recs[:5]):
                 rec_tmdb = rec_tmdbs[i]
