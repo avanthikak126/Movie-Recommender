@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import logging
 from recommender import get_cached_recommender
-# from content_recommender import ContentRecommender
+from content_recommender import ContentRecommender, load_content_data
 from tmdb import tmdb_client
 from evaluation import Evaluator
 import utils
@@ -12,18 +12,21 @@ from auth import add_to_watchlist
 
 
 # Load Data and Build Model once via Streamlit cache
-# TEMPORARY DEBUG TEST
-# Load Data and Build Model once via Streamlit cache
 recommender = get_cached_recommender()
 
-# TEST 3: Bypass Streamlit Caching
-# @st.cache_resource(show_spinner="Building Content Engine...")
-# def get_cached_content_recommender():
-#     rec = ContentRecommender()
-#     rec.build_model()
-#     return rec
+def get_cached_content_recommender():
+    if 'session_content_recommender' in st.session_state:
+        return st.session_state['session_content_recommender']
+        
+    movies_df, tfidf_matrix = load_content_data()
+    if movies_df is None: return None
+    
+    with st.spinner("Initializing Session-Local Content Engine..."):
+        rec = ContentRecommender(movies_df, tfidf_matrix)
+        st.session_state['session_content_recommender'] = rec
+    return rec
 
-# content_recommender = get_cached_content_recommender()
+content_recommender = get_cached_content_recommender()
 
 if 'evaluator' not in st.session_state:
     st.session_state.evaluator = Evaluator(recommender)

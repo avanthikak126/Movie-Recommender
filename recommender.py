@@ -10,106 +10,89 @@ from threadpoolctl import threadpool_limits
 
 DATA_DIR = "data/ml-1m"
 
+@st.cache_data(show_spinner="Loading collaborative data...")
+def load_collaborative_data():
+    try:
+        logging.info("Starting load_collaborative_data")
+        movies_path = os.path.join(DATA_DIR, "movies.dat")
+        ratings_path = os.path.join(DATA_DIR, "ratings.dat")
+        
+        if not os.path.exists(movies_path) or not os.path.exists(ratings_path):
+            logging.error(f"Data files missing: {movies_path} or {ratings_path}")
+            return None, None, None, None
+            
+        movies_df = pd.read_csv(
+            movies_path, 
+            sep="::", 
+            engine='python', 
+            names=['MovieID', 'Title', 'Genres'],
+            encoding='latin-1'
+        )
+        
+        ratings_df = pd.read_csv(
+            ratings_path, 
+            sep="::", 
+            engine='python', 
+            names=['UserID', 'MovieID', 'Rating', 'Timestamp']
+        )
+        
+        avg_ratings = ratings_df.groupby('MovieID')['Rating'].mean().reset_index()
+        movies_df = pd.merge(movies_df, avg_ratings, on='MovieID', how='left').fillna(0)
+        movies_df.rename(columns={'Rating': 'AvgRating'}, inplace=True)
+        
+        pivot_df = ratings_df.pivot(index='MovieID', columns='UserID', values='Rating').fillna(0)
+        matrix = np.ascontiguousarray(pivot_df.values.astype(np.float64))
+        movie_ids = pivot_df.index.tolist()
+        
+        logging.info("Finished load_collaborative_data successfully")
+        return movies_df, ratings_df, matrix, movie_ids
+    except Exception:
+        logging.exception(f"Failed to load MovieLens data: {traceback.format_exc()}")
+        return None, None, None, None
+
 class Recommender:
-    def __init__(self):
-        self.movies_df = None
-        self.ratings_df = None
-        self.matrix = None
+    def __init__(self, movies_df, ratings_df, matrix, movie_ids):
+        self.movies_df = movies_df
+        self.ratings_df = ratings_df
+        self.matrix = matrix
         self.ball_tree = None
-        self.movie_index_to_id = {}
-        self.movie_id_to_index = {}
+        self.movie_index_to_id = {idx: mid for idx, mid in enumerate(movie_ids)}
+        self.movie_id_to_index = {mid: idx for idx, mid in enumerate(movie_ids)}
         self.recommendation_cache = {}
         
         self.stats = {
             'build_time': 0,
-            'matrix_dims': (0,0),
-            'movies': 0,
-            'users': 0,
-            'ratings': 0,
+            'matrix_dims': self.matrix.shape,
+            'movies': len(self.movies_df),
+            'users': self.ratings_df['UserID'].nunique(),
+            'ratings': len(self.ratings_df),
             'sparsity': 0,
             'leaf_size': 40,
             'height': 0,
             'nodes': 0
         }
-
-    def load_data(self):
-        try:
-            logging.info("Starting load_data for Recommender")
-            movies_path = os.path.join(DATA_DIR, "movies.dat")
-            ratings_path = os.path.join(DATA_DIR, "ratings.dat")
-            
-            if not os.path.exists(movies_path) or not os.path.exists(ratings_path):
-                logging.error(f"Data files missing: {movies_path} or {ratings_path}")
-                return False
-                
-            logging.info(f"Loading movies from {movies_path}")
-            self.movies_df = pd.read_csv(
-                movies_path, 
-                sep="::", 
-                engine='python', 
-                names=['MovieID', 'Title', 'Genres'],
-                encoding='latin-1'
-            )
-            
-            logging.info(f"Loading ratings from {ratings_path}")
-            self.ratings_df = pd.read_csv(
-                ratings_path, 
-                sep="::", 
-                engine='python', 
-                names=['UserID', 'MovieID', 'Rating', 'Timestamp']
-            )
-            
-            self.stats['movies'] = len(self.movies_df)
-            self.stats['users'] = self.ratings_df['UserID'].nunique()
-            self.stats['ratings'] = len(self.ratings_df)
-            
-            logging.info("Calculating average ratings")
-            avg_ratings = self.ratings_df.groupby('MovieID')['Rating'].mean().reset_index()
-            self.movies_df = pd.merge(self.movies_df, avg_ratings, on='MovieID', how='left').fillna(0)
-            self.movies_df.rename(columns={'Rating': 'AvgRating'}, inplace=True)
-            
-            logging.info("Successfully finished load_data for Recommender")
-            return True
-        except Exception:
-            logging.exception(f"Failed to load MovieLens data: {traceback.format_exc()}")
-            return False
+        
+        total_elements = self.matrix.shape[0] * self.matrix.shape[1]
+        non_zero = np.count_nonzero(self.matrix)
+        self.stats['sparsity'] = (1.0 - (non_zero / total_elements)) * 100
+        
+        self.build_model()
 
     def build_model(self):
         try:
-            logging.info("Starting build_model for Recommender")
             start_time = time.time()
-            logging.info("Pivoting ratings dataframe")
-            pivot_df = self.ratings_df.pivot(index='MovieID', columns='UserID', values='Rating').fillna(0)
-            # Use float64 and force C-contiguous to avoid memory mapping and alignment issues in Cython BallTree.
-            logging.info("Converting pivot table to float64 contiguous matrix")
-            self.matrix = np.ascontiguousarray(pivot_df.values.astype(np.float64))
-            movie_ids = pivot_df.index.tolist()
-            
-            self.movie_index_to_id = {idx: mid for idx, mid in enumerate(movie_ids)}
-            self.movie_id_to_index = {mid: idx for idx, mid in enumerate(movie_ids)}
-            
-            self.stats['matrix_dims'] = self.matrix.shape
-            total_elements = self.matrix.shape[0] * self.matrix.shape[1]
-            non_zero = np.count_nonzero(self.matrix)
-            self.stats['sparsity'] = (1.0 - (non_zero / total_elements)) * 100
-            
-            logging.info(f"Matrix built with shape: {self.stats['matrix_dims']} and sparsity: {self.stats['sparsity']}%")
-            logging.info("Constructing BallTree...")
+            logging.info("Constructing Session-Local BallTree...")
             with threadpool_limits(limits=1):
                 self.ball_tree = BallTree(self.matrix, leaf_size=self.stats['leaf_size'], metric='euclidean')
-            logging.info("BallTree successfully constructed")
+            logging.info("Session-Local BallTree successfully constructed")
                 
             self.stats['build_time'] = time.time() - start_time
             
             n_samples = self.matrix.shape[0]
             self.stats['nodes'] = int(2 * (n_samples / self.stats['leaf_size']) - 1)
             self.stats['height'] = int(np.log2(self.stats['nodes'])) if self.stats['nodes'] > 0 else 0
-                
-            logging.info("Finished build_model successfully")
-            return True
         except Exception:
             logging.exception(f"Failed to build BallTree model: {traceback.format_exc()}")
-            return False
 
     def get_movie_details(self, movie_id):
         movie = self.movies_df[self.movies_df['MovieID'] == movie_id]
@@ -129,29 +112,21 @@ class Recommender:
         try:
             logging.info(f"Starting get_recommendations for movie_id: {movie_id}")
             if movie_id in self.recommendation_cache:
-                logging.info(f"Returning cached recommendations for movie_id: {movie_id}")
                 return self.recommendation_cache[movie_id], 0.0
 
             if movie_id not in self.movie_id_to_index:
-                logging.warning(f"Movie ID {movie_id} not found in index")
                 return [], 0.0
                 
             idx = self.movie_id_to_index[movie_id]
-            logging.info("Reshaping query vector and ensuring contiguity")
             query_vector = np.ascontiguousarray(self.matrix[idx].reshape(1, -1))
             
             start_time = time.perf_counter()
 
-            logging.info("Executing BallTree query")
             with threadpool_limits(limits=1):
-                # TEST 5: Bypass BallTree
-                # distances, indices = self.ball_tree.query(query_vector, k=n+1)
-                distances, indices = np.array([[0.0] * (n+1)]), np.array([[0] * (n+1)])
-            logging.info("BallTree query executed successfully")
+                distances, indices = self.ball_tree.query(query_vector, k=n+1)
 
             query_time = time.perf_counter() - start_time
 
-            logging.info("Processing recommendation results")
             recommendations = []
             if len(indices[0]) > 1:
                 min_local_dist = distances[0][1]
@@ -177,7 +152,6 @@ class Recommender:
                     recommendations.append(movie_details)
 
             self.recommendation_cache[movie_id] = recommendations
-            logging.info(f"Finished get_recommendations for movie_id: {movie_id}")
             return recommendations, query_time
         except Exception:
             logging.exception(f"Failed to get recommendations for movie ID: {movie_id}. Traceback: {traceback.format_exc()}")
@@ -210,14 +184,12 @@ class Recommender:
                 'speedup': speedup,
             }
         except Exception:
-            logging.exception(f"Failed to benchmark query performance for movie ID: {movie_id}")
             return None
 
-    @st.cache_data(ttl=3600*24)
-    def get_trending(_self, limit=10):
+    def get_trending(self, limit=10):
         try:
-            popular_movies = _self.ratings_df.groupby('MovieID').size().reset_index(name='counts')
-            merged = pd.merge(popular_movies, _self.movies_df, on='MovieID')
+            popular_movies = self.ratings_df.groupby('MovieID').size().reset_index(name='counts')
+            merged = pd.merge(popular_movies, self.movies_df, on='MovieID')
             trending = merged[merged['AvgRating'] > 3.5].sort_values('counts', ascending=False).head(limit)
             return trending.to_dict('records')
         except Exception:
@@ -225,9 +197,15 @@ class Recommender:
             return []
 
 
-@st.cache_resource(show_spinner="Building Global Recommendation Engine...")
 def get_cached_recommender():
-    rec = Recommender()
-    rec.load_data()
-    rec.build_model()
+    if 'session_recommender' in st.session_state:
+        return st.session_state['session_recommender']
+        
+    movies_df, ratings_df, matrix, movie_ids = load_collaborative_data()
+    if movies_df is None:
+        return None
+        
+    with st.spinner("Initializing Session-Local Recommendation Engine..."):
+        rec = Recommender(movies_df, ratings_df, matrix, movie_ids)
+        st.session_state['session_recommender'] = rec
     return rec
