@@ -13,12 +13,16 @@ from auth import add_to_watchlist
 
 # Load Data and Build Model once via Streamlit cache
 # TEMPORARY DEBUG TEST
-recommender = None
+# Load Data and Build Model once via Streamlit cache
+recommender = get_cached_recommender()
+
+@st.cache_resource(show_spinner="Building Content Engine...")
+def get_cached_content_recommender():
+    rec = ContentRecommender()
+    rec.build_model()
+    return rec
 
 content_recommender = get_cached_content_recommender()
-
-st.write("✅ Content recommender loaded")
-st.stop()
 
 if 'evaluator' not in st.session_state:
     st.session_state.evaluator = Evaluator(recommender)
