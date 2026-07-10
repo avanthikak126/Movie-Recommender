@@ -16,7 +16,8 @@ from auth import add_to_watchlist
 # Load Data and Build Model once via Streamlit cache
 recommender = get_cached_recommender()
 
-@st.cache_resource(show_spinner="Building Content Engine...")
+# TEST 3: Bypass Streamlit Caching
+# @st.cache_resource(show_spinner="Building Content Engine...")
 def get_cached_content_recommender():
     rec = ContentRecommender()
     rec.build_model()
