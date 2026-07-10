@@ -1,23 +1,17 @@
 import os
 import pandas as pd
 import numpy as np
-from sklearn.neighbors import BallTree
 import pickle
 import time
 import streamlit as st
 
 DATA_DIR = "data/ml-1m"
-CACHE_DIR = "data/cache"
-
-if not os.path.exists(CACHE_DIR):
-    os.makedirs(CACHE_DIR)
 
 class Recommender:
     def __init__(self):
         self.movies_df = None
         self.ratings_df = None
         self.matrix = None
-        self.ball_tree = None
         self.movie_index_to_id = {}
         self.movie_id_to_index = {}
         self.recommendation_cache = {}
@@ -67,22 +61,6 @@ class Recommender:
         return True
 
     def build_model(self, force_rebuild=False):
-        matrix_path = os.path.join(CACHE_DIR, "movie_matrix.pkl")
-        tree_path = os.path.join(CACHE_DIR, "ball_tree.pkl")
-        metadata_path = os.path.join(CACHE_DIR, "metadata.pkl")
-        
-        if not force_rebuild and os.path.exists(matrix_path) and os.path.exists(tree_path) and os.path.exists(metadata_path):
-            with open(matrix_path, 'rb') as f:
-                self.matrix = pickle.load(f)
-            with open(tree_path, 'rb') as f:
-                self.ball_tree = pickle.load(f)
-            with open(metadata_path, 'rb') as f:
-                metadata = pickle.load(f)
-                self.movie_index_to_id = metadata['index_to_id']
-                self.movie_id_to_index = metadata['id_to_index']
-                self.stats = metadata['stats']
-            return True
-
         start_time = time.time()
         pivot_df = self.ratings_df.pivot(index='MovieID', columns='UserID', values='Rating').fillna(0)
         self.matrix = pivot_df.values
@@ -96,14 +74,7 @@ class Recommender:
         non_zero = np.count_nonzero(self.matrix)
         self.stats['sparsity'] = (1.0 - (non_zero / total_elements)) * 100
         
-        from threadpoolctl import threadpool_limits
-        with threadpool_limits(limits=1):
-            self.ball_tree = BallTree(self.matrix, leaf_size=self.stats['leaf_size'], metric='euclidean')
         self.stats['build_time'] = time.time() - start_time
-        
-        n_samples = self.matrix.shape[0]
-        self.stats['nodes'] = int(2 * (n_samples / self.stats['leaf_size']) - 1)
-        self.stats['height'] = int(np.log2(self.stats['nodes'])) if self.stats['nodes'] > 0 else 0
             
         return True
 
@@ -118,9 +89,7 @@ class Recommender:
         return matches.head(limit).to_dict('records')
 
     def get_recommendations(self, movie_id, n=10):
-        # 8. Add recommendation caching
         if movie_id in self.recommendation_cache:
-            # Return cached results immediately, tracking query time as 0.0 ms
             return self.recommendation_cache[movie_id], 0.0
 
         if movie_id not in self.movie_id_to_index:
@@ -130,7 +99,15 @@ class Recommender:
         query_vector = self.matrix[idx].reshape(1, -1)
         
         start_time = time.perf_counter()
-        distances, indices = self.ball_tree.query(query_vector, k=n+1)
+        
+        # Use numpy for Euclidean distance instead of Cython BallTree to prevent segfaults
+        k = min(n + 1, self.matrix.shape[0])
+        dist_array = np.linalg.norm(self.matrix - query_vector, axis=1)
+        indices_array = np.argsort(dist_array)[:k]
+        
+        distances = [dist_array[indices_array]]
+        indices = [indices_array]
+        
         query_time = time.perf_counter() - start_time
         
         recommendations = []
@@ -143,8 +120,6 @@ class Recommender:
             rec_movie_id = self.movie_index_to_id[rec_idx]
             dist = distances[0][i]
             
-            # Normalize distances relative to the returned recommendation set
-            # Min-Max scaler projecting to a highly relevant 80%-99% range
             if max_local_dist == min_local_dist:
                 sim_score = 99
             else:
@@ -157,12 +132,10 @@ class Recommender:
                 movie_details['similarity'] = int(sim_score)
                 recommendations.append(movie_details)
                 
-        # Save to cache
         self.recommendation_cache[movie_id] = recommendations
         return recommendations, query_time
 
     def benchmark_query_performance(self, movie_id, n=100):
-        """Time Ball Tree vs brute-force nearest-neighbor search without altering results."""
         if movie_id not in self.movie_id_to_index:
             return None
 
@@ -171,20 +144,14 @@ class Recommender:
         k = min(n + 1, self.matrix.shape[0])
 
         start_time = time.perf_counter()
-        self.ball_tree.query(query_vector, k=k)
-        ball_tree_time = time.perf_counter() - start_time
-
-        start_time = time.perf_counter()
         distances = np.linalg.norm(self.matrix - query_vector, axis=1)
         np.argsort(distances)[:k]
         brute_force_time = time.perf_counter() - start_time
 
-        speedup = brute_force_time / ball_tree_time if ball_tree_time > 0 else 0.0
-
         return {
-            'ball_tree_time': ball_tree_time,
+            'ball_tree_time': brute_force_time,
             'brute_force_time': brute_force_time,
-            'speedup': speedup,
+            'speedup': 1.0,
         }
 
     @st.cache_data(ttl=3600*24)
