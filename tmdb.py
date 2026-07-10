@@ -6,6 +6,7 @@ import difflib
 from dotenv import load_dotenv
 import streamlit as st
 import threading
+import logging
 
 load_dotenv()
 
@@ -62,23 +63,24 @@ class TMDbClient:
         }
 
     def _fetch_from_api(self, query, year=None):
-        if not self.api_key:
-            return []
-            
-        url = f"{TMDB_BASE_URL}/search/movie"
-        if self.api_key_param:
-            url += self.api_key_param
-            
-        req_params = {"query": query}
-        if year:
-            req_params["year"] = year
-            
         try:
+            if not self.api_key:
+                return []
+                
+            url = f"{TMDB_BASE_URL}/search/movie"
+            if self.api_key_param:
+                url += self.api_key_param
+                
+            req_params = {"query": query}
+            if year:
+                req_params["year"] = year
+                
             response = requests.get(url, headers=self.headers, params=req_params)
             response.raise_for_status()
             data = response.json()
             return data.get("results", [])
-        except Exception as e:
+        except Exception:
+            logging.exception(f"TMDB API fetch failed for query: '{query}' year: {year}")
             return []
 
     def _fuzzy_match_results(self, target_title, results):
@@ -101,89 +103,93 @@ class TMDbClient:
         return results[0]
 
     def get_movie_details(self, ml_title, debug=False):
-        if ml_title in self.cache:
-            if debug:
-                movie = self.cache[ml_title]
-                print(f"Movie: {ml_title}")
-                print(f"TMDB Query: (Cached)")
-                print(f"Results Returned: N/A")
-                print(f"Selected TMDB ID: {movie.get('id')}")
-                print(f"Poster Found: {'Yes' if 'via.placeholder.com' not in movie.get('poster_url', '') else 'No'}\n")
-            return self.cache[ml_title]
+        try:
+            if ml_title in self.cache:
+                if debug:
+                    movie = self.cache[ml_title]
+                    print(f"Movie: {ml_title}")
+                    print(f"TMDB Query: (Cached)")
+                    print(f"Results Returned: N/A")
+                    print(f"Selected TMDB ID: {movie.get('id')}")
+                    print(f"Poster Found: {'Yes' if 'via.placeholder.com' not in movie.get('poster_url', '') else 'No'}\n")
+                return self.cache[ml_title]
 
-        if not self.api_key:
+            if not self.api_key:
+                return self._get_fallback_movie(ml_title)
+
+            # 1. Remove year from title
+            title, year = self._parse_title(ml_title)
+            
+            # Strategies
+            # 2. Search using title + year
+            # 3. Search title only
+            # 4. Strip alternative titles (e.g. "Seven (Se7en)" -> "Seven")
+            clean_title = re.sub(r'\(.*?\)', '', title).strip() # Removes (Se7en)
+            
+            strategies = [
+                (title, year, "Title + Year"),
+                (title, None, "Title Only"),
+                (clean_title, year, "Clean Title + Year"),
+                (clean_title, None, "Clean Title Only")
+            ]
+            
+            found_movie = None
+            for q_title, q_year, strategy_name in strategies:
+                if not q_title:
+                    continue
+                    
+                results = self._fetch_from_api(q_title, q_year)
+                
+                if results:
+                    # 4. Use fuzzy matching to pick the best result
+                    found_movie = self._fuzzy_match_results(title, results)
+                    if found_movie:
+                        if debug:
+                            print(f"Movie: {ml_title}")
+                            print(f"TMDB Query: {q_title} (Year: {q_year}) [{strategy_name}]")
+                            print(f"Results Returned: {len(results)}")
+                            print(f"Selected TMDB ID: {found_movie.get('id')}")
+                            poster_found = found_movie.get('poster_path') is not None
+                            print(f"Poster Found: {'Yes' if poster_found else 'No'}\n")
+                        break
+                        
+            if found_movie:
+                if found_movie.get("poster_path"):
+                    found_movie["poster_url"] = f"{IMAGE_BASE_URL}{found_movie['poster_path']}"
+                else:
+                    found_movie["poster_url"] = self._get_fallback_poster()
+                    
+                self.cache[ml_title] = found_movie
+                self._save_cache()
+                return found_movie
+            else:
+                if debug:
+                    print(f"Movie: {ml_title}")
+                    print(f"TMDB Query: {clean_title}")
+                    print(f"Results Returned: 0")
+                    print(f"Reason: No TMDB Match\n")
+                    
+                fallback = self._get_fallback_movie(title)
+                self.cache[ml_title] = fallback
+                self._save_cache()
+                return fallback
+        except Exception:
+            logging.exception(f"Failed to get TMDB details for movie: '{ml_title}'")
             return self._get_fallback_movie(ml_title)
 
-        # 1. Remove year from title
-        title, year = self._parse_title(ml_title)
-        
-        # Strategies
-        # 2. Search using title + year
-        # 3. Search title only
-        # 4. Strip alternative titles (e.g. "Seven (Se7en)" -> "Seven")
-        clean_title = re.sub(r'\(.*?\)', '', title).strip() # Removes (Se7en)
-        
-        strategies = [
-            (title, year, "Title + Year"),
-            (title, None, "Title Only"),
-            (clean_title, year, "Clean Title + Year"),
-            (clean_title, None, "Clean Title Only")
-        ]
-        
-        found_movie = None
-        for q_title, q_year, strategy_name in strategies:
-            if not q_title:
-                continue
-                
-            results = self._fetch_from_api(q_title, q_year)
-            
-            if results:
-                # 4. Use fuzzy matching to pick the best result
-                found_movie = self._fuzzy_match_results(title, results)
-                if found_movie:
-                    if debug:
-                        print(f"Movie: {ml_title}")
-                        print(f"TMDB Query: {q_title} (Year: {q_year}) [{strategy_name}]")
-                        print(f"Results Returned: {len(results)}")
-                        print(f"Selected TMDB ID: {found_movie.get('id')}")
-                        poster_found = found_movie.get('poster_path') is not None
-                        print(f"Poster Found: {'Yes' if poster_found else 'No'}\n")
-                    break
-                    
-        if found_movie:
-            if found_movie.get("poster_path"):
-                found_movie["poster_url"] = f"{IMAGE_BASE_URL}{found_movie['poster_path']}"
-            else:
-                found_movie["poster_url"] = self._get_fallback_poster()
-                
-            self.cache[ml_title] = found_movie
-            self._save_cache()
-            return found_movie
-        else:
-            if debug:
-                print(f"Movie: {ml_title}")
-                print(f"TMDB Query: {clean_title}")
-                print(f"Results Returned: 0")
-                print(f"Reason: No TMDB Match\n")
-                
-            fallback = self._get_fallback_movie(title)
-            self.cache[ml_title] = fallback
-            self._save_cache()
-            return fallback
-
     def get_similar_movies(self, tmdb_id):
-        if not self.api_key or not tmdb_id:
-            return []
-            
-        cache_key = f"similar_{tmdb_id}"
-        if cache_key in self.cache:
-            return self.cache[cache_key]
-            
-        url = f"{TMDB_BASE_URL}/movie/{tmdb_id}/similar"
-        if self.api_key_param:
-            url += self.api_key_param
-            
         try:
+            if not self.api_key or not tmdb_id:
+                return []
+                
+            cache_key = f"similar_{tmdb_id}"
+            if cache_key in self.cache:
+                return self.cache[cache_key]
+                
+            url = f"{TMDB_BASE_URL}/movie/{tmdb_id}/similar"
+            if self.api_key_param:
+                url += self.api_key_param
+                
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
             data = response.json()
@@ -197,9 +203,8 @@ class TMDbClient:
             self.cache[cache_key] = results
             self._save_cache()
             return results
-        except Exception as e:
-            pass
-            
-        return []
+        except Exception:
+            logging.exception(f"TMDB API fetch failed for similar movies of ID: {tmdb_id}")
+            return []
 
 tmdb_client = TMDbClient()
