@@ -5,6 +5,7 @@ import re
 import difflib
 from dotenv import load_dotenv
 import streamlit as st
+import threading
 
 load_dotenv()
 
@@ -18,6 +19,7 @@ class TMDbClient:
     def __init__(self):
         self.api_key = TMDB_API_KEY
         self.cache = self._load_cache()
+        self.cache_lock = threading.Lock()
         self.headers = {
             "accept": "application/json"
         }
@@ -37,9 +39,10 @@ class TMDbClient:
         return {}
 
     def _save_cache(self):
-        os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
-        with open(CACHE_FILE, 'w') as f:
-            json.dump(self.cache, f)
+        with self.cache_lock:
+            os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
+            with open(CACHE_FILE, 'w') as f:
+                json.dump(self.cache, f)
 
     def _parse_title(self, ml_title):
         match = re.match(r"^(.*) \((\d{4})\)$", ml_title)

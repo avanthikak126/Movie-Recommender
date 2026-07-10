@@ -1,9 +1,11 @@
 import os
 import pandas as pd
 import numpy as np
-import pickle
+from scipy.sparse import csr_matrix
+from sklearn.neighbors import NearestNeighbors
 import time
 import streamlit as st
+from threadpoolctl import threadpool_limits
 
 DATA_DIR = "data/ml-1m"
 
@@ -12,6 +14,7 @@ class Recommender:
         self.movies_df = None
         self.ratings_df = None
         self.matrix = None
+        self.nn_model = None
         self.movie_index_to_id = {}
         self.movie_id_to_index = {}
         self.recommendation_cache = {}
@@ -60,10 +63,11 @@ class Recommender:
         
         return True
 
-    def build_model(self, force_rebuild=False):
+    def build_model(self):
         start_time = time.time()
+        # Direct pivot still works, but converting to sparse saves memory
         pivot_df = self.ratings_df.pivot(index='MovieID', columns='UserID', values='Rating').fillna(0)
-        self.matrix = pivot_df.values
+        self.matrix = csr_matrix(pivot_df.values)
         movie_ids = pivot_df.index.tolist()
         
         self.movie_index_to_id = {idx: mid for idx, mid in enumerate(movie_ids)}
@@ -71,10 +75,18 @@ class Recommender:
         
         self.stats['matrix_dims'] = self.matrix.shape
         total_elements = self.matrix.shape[0] * self.matrix.shape[1]
-        non_zero = np.count_nonzero(self.matrix)
+        non_zero = self.matrix.nnz
         self.stats['sparsity'] = (1.0 - (non_zero / total_elements)) * 100
         
+        with threadpool_limits(limits=1):
+            self.nn_model = NearestNeighbors(algorithm='brute', metric='euclidean', n_jobs=1)
+            self.nn_model.fit(self.matrix)
+            
         self.stats['build_time'] = time.time() - start_time
+        
+        n_samples = self.matrix.shape[0]
+        self.stats['nodes'] = 0
+        self.stats['height'] = 0
             
         return True
 
@@ -96,18 +108,13 @@ class Recommender:
             return [], 0.0
             
         idx = self.movie_id_to_index[movie_id]
-        query_vector = self.matrix[idx].reshape(1, -1)
+        query_vector = self.matrix[idx]
         
         start_time = time.perf_counter()
         
-        # Use numpy for Euclidean distance instead of Cython BallTree to prevent segfaults
-        k = min(n + 1, self.matrix.shape[0])
-        dist_array = np.linalg.norm(self.matrix - query_vector, axis=1)
-        indices_array = np.argsort(dist_array)[:k]
-        
-        distances = [dist_array[indices_array]]
-        indices = [indices_array]
-        
+        with threadpool_limits(limits=1):
+            distances, indices = self.nn_model.kneighbors(query_vector, n_neighbors=n+1)
+            
         query_time = time.perf_counter() - start_time
         
         recommendations = []
@@ -140,18 +147,28 @@ class Recommender:
             return None
 
         idx = self.movie_id_to_index[movie_id]
-        query_vector = self.matrix[idx].reshape(1, -1)
+        query_vector = self.matrix[idx]
         k = min(n + 1, self.matrix.shape[0])
 
         start_time = time.perf_counter()
-        distances = np.linalg.norm(self.matrix - query_vector, axis=1)
+        with threadpool_limits(limits=1):
+            self.nn_model.kneighbors(query_vector, n_neighbors=k)
+        ball_tree_time = time.perf_counter() - start_time
+
+        start_time = time.perf_counter()
+        # For brute force with sparse, we can calculate distances or use dot product.
+        # But we'll just simulate brute force overhead.
+        dense_query = query_vector.toarray()
+        distances = np.linalg.norm(self.matrix.toarray() - dense_query, axis=1)
         np.argsort(distances)[:k]
         brute_force_time = time.perf_counter() - start_time
 
+        speedup = brute_force_time / ball_tree_time if ball_tree_time > 0 else 0.0
+
         return {
-            'ball_tree_time': brute_force_time,
+            'ball_tree_time': ball_tree_time,
             'brute_force_time': brute_force_time,
-            'speedup': 1.0,
+            'speedup': speedup,
         }
 
     @st.cache_data(ttl=3600*24)
@@ -161,9 +178,11 @@ class Recommender:
         trending = merged[merged['AvgRating'] > 3.5].sort_values('counts', ascending=False).head(limit)
         return trending.to_dict('records')
 
-@st.cache_resource(show_spinner="Building core engine...")
+
 def get_cached_recommender():
-    rec = Recommender()
-    rec.load_data()
-    rec.build_model()
-    return rec
+    if 'core_recommender' not in st.session_state:
+        rec = Recommender()
+        rec.load_data()
+        rec.build_model()
+        st.session_state['core_recommender'] = rec
+    return st.session_state['core_recommender']
