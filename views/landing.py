@@ -39,10 +39,10 @@ def render_auth_landing_page():
 
     login_col, signup_col = st.columns(2)
     with login_col:
-        if st.button("Login", use_container_width=True):
+        if st.button("Login", width="stretch"):
             st.switch_page("views/login.py")
     with signup_col:
-        if st.button("Sign Up", use_container_width=True):
+        if st.button("Sign Up", width="stretch"):
             st.switch_page("views/Signup.py")
 
 render_auth_landing_page()

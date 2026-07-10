@@ -6,7 +6,6 @@ import traceback
 from sklearn.neighbors import BallTree
 import time
 import streamlit as st
-from threadpoolctl import threadpool_limits
 
 DATA_DIR = "data/ml-1m"
 
@@ -82,8 +81,7 @@ class Recommender:
         try:
             start_time = time.time()
             logging.info("Constructing Session-Local BallTree...")
-            with threadpool_limits(limits=1):
-                self.ball_tree = BallTree(self.matrix, leaf_size=self.stats['leaf_size'], metric='euclidean')
+            self.ball_tree = BallTree(self.matrix, leaf_size=self.stats['leaf_size'], metric='euclidean')
             logging.info("Session-Local BallTree successfully constructed")
                 
             self.stats['build_time'] = time.time() - start_time
@@ -122,8 +120,7 @@ class Recommender:
             
             start_time = time.perf_counter()
 
-            with threadpool_limits(limits=1):
-                distances, indices = self.ball_tree.query(query_vector, k=n+1)
+            distances, indices = self.ball_tree.query(query_vector, k=n+1)
 
             query_time = time.perf_counter() - start_time
 
@@ -167,8 +164,7 @@ class Recommender:
             k = min(n + 1, self.matrix.shape[0])
 
             start_time = time.perf_counter()
-            with threadpool_limits(limits=1):
-                self.ball_tree.query(query_vector, k=k)
+            self.ball_tree.query(query_vector, k=k)
             ball_tree_time = time.perf_counter() - start_time
 
             start_time = time.perf_counter()

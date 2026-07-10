@@ -19,7 +19,7 @@ def render_sidebar():
             st.caption(f"Signed in as **{st.session_state['username']}**")
             st.page_link("views/home.py", label="Home", icon="🏠")
             st.page_link("views/watchlist.py", label="Watchlist", icon="⭐")
-            if st.button("Logout", use_container_width=True):
+            if st.button("Logout", width="stretch"):
                 st.session_state.clear()
                 st.rerun()
 

@@ -43,7 +43,7 @@ def get_cached_tmdb_similar_movies(tmdb_id):
 
 def render_poster(title, poster_url):
     fallback_url = "https://via.placeholder.com/500x750/1d1e26/e50914?text=No+Poster+Found"
-    st.image(poster_url or fallback_url, use_container_width=True)
+    st.image(poster_url or fallback_url, width="stretch")
 
 def _get_shared_genres(source_genres, target_genres):
     if not source_genres or not target_genres:
@@ -191,7 +191,7 @@ with tab1:
     with col2:
         st.write("")
         st.write("")
-        search_btn = st.button("Get Recommendations", use_container_width=True)
+        search_btn = st.button("Get Recommendations", width="stretch")
 
     if search_btn and selected_title:
         with st.spinner("Finding Similar Movies..."):
@@ -332,7 +332,7 @@ with tab1:
                     with st.expander("Why Recommended?"):
                         render_why_recommended(rec)
 
-        if st.button("⚡ Run Performance Benchmark", use_container_width=False, key="run_benchmark_btn"):
+        if st.button("⚡ Run Performance Benchmark", width="content", key="run_benchmark_btn"):
             st.session_state.show_performance_benchmark = True
             st.session_state.benchmark_movie_id = selected_m['MovieID']
             with st.spinner("Running Ball Tree vs Brute Force benchmark..."):
@@ -351,7 +351,7 @@ with tab1:
                 st.markdown("### ⚡ Recommendation Engine Performance")
             with close_col:
                 st.write("")
-                if st.button("✕ Close", key="close_benchmark_btn", use_container_width=True):
+                if st.button("✕ Close", key="close_benchmark_btn", width="stretch"):
                     st.session_state.show_performance_benchmark = False
                     st.session_state.benchmark_movie_id = None
                     st.session_state.benchmark_results = None
@@ -384,7 +384,7 @@ with tab1:
                     benchmark['ball_tree_time'],
                     benchmark['brute_force_time'],
                 ),
-                use_container_width=True,
+                width="stretch",
             )
 
         if recs:
@@ -446,9 +446,9 @@ with tab2:
     
     c1, c2 = st.columns(2)
     with c1:
-        st.plotly_chart(analytics.plot_genre_distribution(recommender.movies_df), use_container_width=True)
+        st.plotly_chart(analytics.plot_genre_distribution(recommender.movies_df), width="stretch")
     with c2:
-        st.plotly_chart(analytics.plot_ratings_distribution(recommender.ratings_df), use_container_width=True)
+        st.plotly_chart(analytics.plot_ratings_distribution(recommender.ratings_df), width="stretch")
 
 
 with tab3:
@@ -497,7 +497,7 @@ with tab4:
         
         st.markdown("---")
         st.markdown("### Metrics Overview")
-        st.plotly_chart(analytics.plot_advanced_validation_metrics(m), use_container_width=True)
+        st.plotly_chart(analytics.plot_advanced_validation_metrics(m), width="stretch")
         
         st.markdown("### Methodology & Interpretation")
         st.info("""
