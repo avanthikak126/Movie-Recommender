@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import logging
 from recommender import get_cached_recommender
-from content_recommender import ContentRecommender
+# from content_recommender import ContentRecommender
 from tmdb import tmdb_client
 from evaluation import Evaluator
 import utils
@@ -18,12 +18,12 @@ recommender = get_cached_recommender()
 
 # TEST 3: Bypass Streamlit Caching
 # @st.cache_resource(show_spinner="Building Content Engine...")
-def get_cached_content_recommender():
-    rec = ContentRecommender()
-    rec.build_model()
-    return rec
+# def get_cached_content_recommender():
+#     rec = ContentRecommender()
+#     rec.build_model()
+#     return rec
 
-content_recommender = get_cached_content_recommender()
+# content_recommender = get_cached_content_recommender()
 
 if 'evaluator' not in st.session_state:
     st.session_state.evaluator = Evaluator(recommender)
