@@ -144,7 +144,9 @@ class Recommender:
 
             logging.info("Executing BallTree query")
             with threadpool_limits(limits=1):
-              distances, indices = self.ball_tree.query(query_vector, k=n+1)
+                # TEST 5: Bypass BallTree
+                # distances, indices = self.ball_tree.query(query_vector, k=n+1)
+                distances, indices = np.array([[0.0] * (n+1)]), np.array([[0] * (n+1)])
             logging.info("BallTree query executed successfully")
 
             query_time = time.perf_counter() - start_time
