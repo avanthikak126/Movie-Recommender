@@ -1,6 +1,13 @@
 import os
+
+# Limit BLAS/OpenMP threads (helps avoid native crashes on Streamlit Cloud)
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 import pandas as pd
-import logging
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -20,17 +27,18 @@ class ContentRecommender:
 
     def load_data(self):
 
-        print("CONTENT: Loading data...")
+        print("========== LOAD DATA START ==========")
 
         movies_path = os.path.join(DATA_DIR, "movies.dat")
 
-        print("CONTENT: Checking file:", movies_path)
+        print("STEP L1: Checking file:", movies_path)
 
         if not os.path.exists(movies_path):
             raise FileNotFoundError(
                 f"Movie file missing: {movies_path}"
             )
 
+        print("STEP L2: Reading movies.dat")
 
         self.movies_df = pd.read_csv(
             movies_path,
@@ -44,12 +52,7 @@ class ContentRecommender:
             encoding="latin-1"
         )
 
-
-        print(
-            "CONTENT: Movies loaded:",
-            len(self.movies_df)
-        )
-
+        print("STEP L3: Movies loaded:", len(self.movies_df))
 
         genres = (
             self.movies_df["Genres"]
@@ -61,6 +64,7 @@ class ContentRecommender:
             )
         )
 
+        print("STEP L4: Creating Content column")
 
         self.movies_df["Content"] = (
             self.movies_df["Title"].fillna("")
@@ -68,54 +72,65 @@ class ContentRecommender:
             + genres
         )
 
-
-        print("CONTENT: Text features created")
+        print("========== LOAD DATA FINISHED ==========")
 
         return True
-
 
 
     def build_model(self):
 
-        print("CONTENT: Building model...")
+        try:
+            print("========== BUILD MODEL START ==========")
 
+            print("STEP 1: Checking data")
 
-        if self.movies_df is None:
-            self.load_data()
+            if self.movies_df is None:
+                print("STEP 2: Calling load_data()")
+                self.load_data()
 
+            print("STEP 3: Data loaded")
 
-        print("CONTENT: Starting TF-IDF")
+            print("STEP 4: Creating TF-IDF Vectorizer")
 
-
-        self.vectorizer = TfidfVectorizer(
-            stop_words="english",
-            max_features=5000
-        )
-
-
-        self.tfidf_matrix = self.vectorizer.fit_transform(
-            self.movies_df["Content"]
-        )
-
-
-        print(
-            "CONTENT: TF-IDF completed:",
-            self.tfidf_matrix.shape
-        )
-
-
-        self.movie_id_to_index = {
-            int(movie_id): index
-            for index, movie_id in enumerate(
-                self.movies_df["MovieID"]
+            self.vectorizer = TfidfVectorizer(
+                stop_words="english",
+                max_features=5000
             )
-        }
 
+            print("STEP 5: Vectorizer created")
 
-        print("CONTENT: Model ready")
+            print("STEP 6: Starting fit_transform()")
 
-        return True
+            self.tfidf_matrix = self.vectorizer.fit_transform(
+                self.movies_df["Content"]
+            )
 
+            print("STEP 7: fit_transform() completed")
+            print("TF-IDF Shape:", self.tfidf_matrix.shape)
+
+            print("STEP 8: Building movie index")
+
+            self.movie_id_to_index = {
+                int(movie_id): index
+                for index, movie_id in enumerate(
+                    self.movies_df["MovieID"]
+                )
+            }
+
+            print("STEP 9: Movie index completed")
+
+            print("========== BUILD MODEL FINISHED ==========")
+
+            return True
+
+        except Exception as e:
+            print("ERROR OCCURRED")
+            print(e)
+
+            import traceback
+            traceback.print_exc()
+
+            return False
 
 
     def get_content_recommendations(
@@ -124,53 +139,41 @@ class ContentRecommender:
             n=10
     ):
 
-        print(
-            "CONTENT: Recommendation request:",
-            movie_id
-        )
-
+        print("Recommendation requested:", movie_id)
 
         if self.tfidf_matrix is None:
             self.build_model()
 
-
-
         movie_id = int(movie_id)
-
 
         if movie_id not in self.movie_id_to_index:
             return []
 
-
-
         idx = self.movie_id_to_index[movie_id]
 
+        print("STEP R1: Computing cosine similarity")
 
         similarity_scores = cosine_similarity(
             self.tfidf_matrix[idx],
             self.tfidf_matrix
         ).flatten()
 
-
+        print("STEP R2: Similarity computed")
 
         similar_movies = sorted(
             enumerate(similarity_scores),
-            key=lambda x:x[1],
+            key=lambda x: x[1],
             reverse=True
         )
 
-
         recommendations = []
-
 
         for movie_index, score in similar_movies:
 
             if movie_index == idx:
                 continue
 
-
             movie = self.movies_df.iloc[movie_index]
-
 
             recommendations.append(
                 {
@@ -181,10 +184,9 @@ class ContentRecommender:
                 }
             )
 
-
             if len(recommendations) == n:
                 break
 
-
+        print("STEP R3: Recommendations ready")
 
         return recommendations
