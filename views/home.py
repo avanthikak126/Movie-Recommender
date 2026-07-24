@@ -283,10 +283,39 @@ with tab1:
         recs = hybrid_recs[:10]
         
         if recs:
-            cols = st.columns(5)
+            # ==========================================
+            # 📱 MOBILE-ONLY: CUSTOM HTML CAROUSEL
+            # ==========================================
+            carousel_html = '<div class="mobile-netflix-carousel">'
             
             logging.info("UI: Fetching TMDB details for hybrid recommendations")
             rec_tmdbs = [get_cached_tmdb_movie_details(r['Title']) for r in recs[:5]]
+            
+            for i, rec in enumerate(recs[:5]):
+                rec_tmdb = rec_tmdbs[i]
+                poster = rec_tmdb.get('poster_url') or "https://via.placeholder.com/500x750/1d1e26/e50914?text=No+Poster"
+                title = rec['Title']
+                
+                avg_rating = rec.get('AvgRating')
+                if avg_rating is None:
+                    m_row = recommender.movies_df[recommender.movies_df['MovieID'] == rec['MovieID']]
+                    avg_rating = m_row.iloc[0]['AvgRating'] if not m_row.empty else 0
+
+                carousel_html += f"""
+                <div class="carousel-card">
+                    <img src="{poster}" alt="{title}" class="carousel-poster">
+                    <div class="carousel-title">{title}</div>
+                    <div class="carousel-rating">⭐ {avg_rating:.1f}/5</div>
+                </div>
+                """
+            carousel_html += '</div>'
+            st.markdown(carousel_html, unsafe_allow_html=True)
+
+            # ==========================================
+            # 💻 DESKTOP-ONLY: STREAMLIT COLUMNS
+            # ==========================================
+            st.markdown('<div class="desktop-grid"></div>', unsafe_allow_html=True)
+            cols = st.columns(5)
             logging.info("UI: TMDB details fetched, rendering grid")
             
             for i, rec in enumerate(recs[:5]):
@@ -310,7 +339,8 @@ with tab1:
                         st.markdown(f"🎯 **Similarity:** {int(c_sim * 100)}%")
 
                     if st.button( "⭐ Add to Watchlist",
-                        key=f"watch_{rec['MovieID']}"
+                        key=f"watch_{rec['MovieID']}",
+                        width="stretch"
                     ):
                         if "username" in st.session_state:
                             added = add_to_watchlist(
@@ -328,7 +358,7 @@ with tab1:
                     with st.expander("Why Recommended?"):
                         render_why_recommended(rec)
 
-        if st.button("⚡ Run Performance Benchmark", width="content", key="run_benchmark_btn"):
+        if st.button("⚡ Run Performance Benchmark", width="stretch", key="run_benchmark_btn"):
             st.session_state.show_performance_benchmark = True
             st.session_state.benchmark_movie_id = selected_m['MovieID']
             with st.spinner("Running Ball Tree vs Brute Force benchmark..."):
@@ -389,6 +419,7 @@ with tab1:
             tmdb_similar = get_cached_tmdb_similar_movies(tmdb_data.get('id'))
             
             if tmdb_similar:
+                st.markdown('<div class="mobile-poster-grid"></div>', unsafe_allow_html=True)
                 t_cols = st.columns(5)
                 for i, tmdb_rec in enumerate(tmdb_similar[:5]):
                     with t_cols[i]:
@@ -400,6 +431,7 @@ with tab1:
     st.markdown("---")
     st.markdown("### 🔥 Trending Movies")
     trending = recommender.get_trending(5)
+    st.markdown('<div class="mobile-poster-grid"></div>', unsafe_allow_html=True)
     cols = st.columns(5)
     
     trending_tmdbs = [get_cached_tmdb_movie_details(t['Title']) for t in trending]
@@ -414,6 +446,7 @@ with tab1:
     # RECENT SEARCHES
     if st.session_state.recent_searches:
         st.markdown("### 🕒 Recently Searched")
+        st.markdown('<div class="mobile-poster-grid"></div>', unsafe_allow_html=True)
         r_cols = st.columns(5)
         for i, r_movie in enumerate(st.session_state.recent_searches):
             r_tmdb = get_cached_tmdb_movie_details(r_movie['Title'])
@@ -470,7 +503,7 @@ with tab4:
     st.markdown("Evaluating the recommendation system using comprehensive metrics over a sample of active users.")
     
     if not st.session_state.evaluator.metrics['Evaluated']:
-        if st.button("Run Formal Evaluation"):
+        if st.button("Run Formal Evaluation", width="stretch"):
             with st.spinner("Evaluating model... This might take a minute."):
                 st.session_state.evaluator.evaluate(sample_size=50)
                 st.rerun()
