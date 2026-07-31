@@ -411,11 +411,15 @@ with tab2:
         
     st.markdown("---")
     
+    st.markdown('<div class="chart-container-row"></div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
+    
+    chart_config = {'responsive': True, 'displayModeBar': False}
+    
     with c1:
-        st.plotly_chart(analytics.plot_genre_distribution(recommender.movies_df), width="stretch")
+        st.plotly_chart(analytics.plot_genre_distribution(recommender.movies_df), use_container_width=True, config=chart_config)
     with c2:
-        st.plotly_chart(analytics.plot_ratings_distribution(recommender.ratings_df), width="stretch")
+        st.plotly_chart(analytics.plot_ratings_distribution(recommender.ratings_df), use_container_width=True, config=chart_config)
 
 
 with tab3:
@@ -464,7 +468,8 @@ with tab4:
         
         st.markdown("---")
         st.markdown("### Metrics Overview")
-        st.plotly_chart(analytics.plot_advanced_validation_metrics(m), width="stretch")
+        st.markdown('<div class="chart-container-row"></div>', unsafe_allow_html=True)
+        st.plotly_chart(analytics.plot_advanced_validation_metrics(m), use_container_width=True, config={'responsive': True, 'displayModeBar': False})
         
         st.markdown("### Methodology & Interpretation")
         st.info("""

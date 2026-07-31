@@ -873,6 +873,22 @@ hr {
     .streamlit-expanderHeader {
         font-size: 0.82rem !important;
     }
+
+    /* --- Charts (Plotly) responsive stacking --- */
+    div[data-testid="stHorizontalBlock"]:has(.stPlotlyChart) {
+        flex-wrap: wrap !important;
+        overflow-x: visible !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.stPlotlyChart) > div[data-testid="stColumn"] {
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin-bottom: 20px;
+    }
 }
 
 /* --- Extra small screens (phones in portrait) --- */
