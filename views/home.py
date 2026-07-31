@@ -286,13 +286,39 @@ with tab1:
             # ==========================================
             # 🎬 HORIZONTAL SCROLLING CAROUSEL
             # ==========================================
-            st.markdown('<div class="scroll-carousel"></div>', unsafe_allow_html=True)
-            cols = st.columns(len(recs))
+            carousel_html = '<div class="mobile-netflix-carousel">'
+            
+            logging.info("UI: Fetching TMDB details for hybrid recommendations")
+            rec_tmdbs = [get_cached_tmdb_movie_details(r['Title']) for r in recs[:5]]
+            
+            for i, rec in enumerate(recs[:5]):
+                rec_tmdb = rec_tmdbs[i]
+                poster = rec_tmdb.get('poster_url') or "https://via.placeholder.com/500x750/1d1e26/e50914?text=No+Poster"
+                title = rec['Title']
+                
+                avg_rating = rec.get('AvgRating')
+                if avg_rating is None:
+                    m_row = recommender.movies_df[recommender.movies_df['MovieID'] == rec['MovieID']]
+                    avg_rating = m_row.iloc[0]['AvgRating'] if not m_row.empty else 0
+
+                carousel_html += f"""
+<div class="carousel-card">
+    <img src="{poster}" alt="{title}" class="carousel-poster">
+    <div class="carousel-title">{title}</div>
+    <div class="carousel-rating">⭐ {avg_rating:.1f}/5</div>
+</div>
+"""
+            carousel_html += '</div>'
+            st.markdown(carousel_html, unsafe_allow_html=True)
+
+            # ==========================================
+            # 💻 DESKTOP-ONLY: STREAMLIT COLUMNS
+            # ==========================================
+            st.markdown('<div class="desktop-grid"></div>', unsafe_allow_html=True)
+            cols = st.columns(5)
             logging.info("UI: TMDB details fetched, rendering grid")
             
-            rec_tmdbs = [get_cached_tmdb_movie_details(r['Title']) for r in recs]
-            
-            for i, rec in enumerate(recs):
+            for i, rec in enumerate(recs[:5]):
                 rec_tmdb = rec_tmdbs[i]
                 with cols[i]:
                     render_poster(rec['Title'], rec_tmdb['poster_url'])
