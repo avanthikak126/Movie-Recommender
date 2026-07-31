@@ -284,7 +284,7 @@ with tab1:
         
         if recs:
             # ==========================================
-            # 🎬 HORIZONTAL SCROLLING CAROUSEL
+            # 📱 MOBILE-ONLY: CUSTOM HTML CAROUSEL
             # ==========================================
             carousel_html = '<div class="mobile-netflix-carousel">'
             
@@ -302,16 +302,61 @@ with tab1:
                     avg_rating = m_row.iloc[0]['AvgRating'] if not m_row.empty else 0
 
                 carousel_html += f"""
-<div class="carousel-card">
-    <img src="{poster}" alt="{title}" class="carousel-poster">
-    <div class="carousel-title">{title}</div>
-    <div class="carousel-rating">⭐ {avg_rating:.1f}/5</div>
-</div>
-"""
+                <div class="carousel-card">
+                    <img src="{poster}" alt="{title}" class="carousel-poster">
+                    <div class="carousel-title">{title}</div>
+                    <div class="carousel-rating">⭐ {avg_rating:.1f}/5</div>
+                </div>
+                """
             carousel_html += '</div>'
             st.markdown(carousel_html, unsafe_allow_html=True)
 
+            # ==========================================
+            # 💻 DESKTOP-ONLY: STREAMLIT COLUMNS
+            # ==========================================
+            st.markdown('<div class="desktop-grid"></div>', unsafe_allow_html=True)
+            cols = st.columns(5)
+            logging.info("UI: TMDB details fetched, rendering grid")
+            
+            for i, rec in enumerate(recs[:5]):
+                rec_tmdb = rec_tmdbs[i]
+                with cols[i]:
+                    render_poster(rec['Title'], rec_tmdb['poster_url'])
+                    st.markdown(f"**{rec['Title']}**")
+                    st.markdown(f"**Genres:** {rec['Genres']}")
+                    
+                    avg_rating = rec.get('AvgRating')
+                    if avg_rating is None:
+                        m_row = recommender.movies_df[recommender.movies_df['MovieID'] == rec['MovieID']]
+                        avg_rating = m_row.iloc[0]['AvgRating'] if not m_row.empty else 0
+                    st.markdown(f"⭐ {avg_rating:.1f}/5")
 
+                    sim = rec.get('similarity')
+                    if sim is not None:
+                        st.markdown(f"🎯 **Similarity:** {sim}%")
+                    else:
+                        c_sim = rec.get('Content Similarity Score', 0)
+                        st.markdown(f"🎯 **Similarity:** {int(c_sim * 100)}%")
+
+                    if st.button( "⭐ Add to Watchlist",
+                        key=f"watch_{rec['MovieID']}",
+                        width="stretch"
+                    ):
+                        if "username" in st.session_state:
+                            added = add_to_watchlist(
+                                st.session_state["username"],
+                                rec["MovieID"],
+                                rec["Title"]
+                            )
+                            if added:
+                                st.success("Added to Watchlist!")
+                            else:
+                                st.info("Movie already in Watchlist")
+                        else:
+                            st.warning("Please login first.")
+
+                    with st.expander("Why Recommended?"):
+                        render_why_recommended(rec)
 
         if st.button("⚡ Run Performance Benchmark", width="stretch", key="run_benchmark_btn"):
             st.session_state.show_performance_benchmark = True
@@ -374,9 +419,9 @@ with tab1:
             tmdb_similar = get_cached_tmdb_similar_movies(tmdb_data.get('id'))
             
             if tmdb_similar:
-                st.markdown('<div class="scroll-carousel"></div>', unsafe_allow_html=True)
-                t_cols = st.columns(len(tmdb_similar))
-                for i, tmdb_rec in enumerate(tmdb_similar):
+                st.markdown('<div class="mobile-poster-grid"></div>', unsafe_allow_html=True)
+                t_cols = st.columns(5)
+                for i, tmdb_rec in enumerate(tmdb_similar[:5]):
                     with t_cols[i]:
                         render_poster(tmdb_rec.get('title', 'Unknown'), tmdb_rec.get('poster_url', ''))
                         st.markdown(f"**{tmdb_rec.get('title', tmdb_rec.get('name', 'Unknown'))}**")
@@ -385,9 +430,9 @@ with tab1:
     # TRENDING SECTION
     st.markdown("---")
     st.markdown("### 🔥 Trending Movies")
-    trending = recommender.get_trending(10)
-    st.markdown('<div class="scroll-carousel"></div>', unsafe_allow_html=True)
-    cols = st.columns(len(trending))
+    trending = recommender.get_trending(5)
+    st.markdown('<div class="mobile-poster-grid"></div>', unsafe_allow_html=True)
+    cols = st.columns(5)
     
     trending_tmdbs = [get_cached_tmdb_movie_details(t['Title']) for t in trending]
     
@@ -401,8 +446,8 @@ with tab1:
     # RECENT SEARCHES
     if st.session_state.recent_searches:
         st.markdown("### 🕒 Recently Searched")
-        st.markdown('<div class="scroll-carousel"></div>', unsafe_allow_html=True)
-        r_cols = st.columns(len(st.session_state.recent_searches))
+        st.markdown('<div class="mobile-poster-grid"></div>', unsafe_allow_html=True)
+        r_cols = st.columns(5)
         for i, r_movie in enumerate(st.session_state.recent_searches):
             r_tmdb = get_cached_tmdb_movie_details(r_movie['Title'])
             with r_cols[i]:
