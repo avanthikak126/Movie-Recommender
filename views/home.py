@@ -284,11 +284,11 @@ with tab1:
         
         if recs:
             logging.info("UI: Fetching TMDB details for hybrid recommendations")
-            rec_tmdbs = [get_cached_tmdb_movie_details(r['Title']) for r in recs[:5]]
+            rec_tmdbs = [get_cached_tmdb_movie_details(r['Title']) for r in recs[:7]]
 
             st.markdown('<div class="mobile-poster-grid"></div>', unsafe_allow_html=True)
-            cols = st.columns(5)
-            for i, rec in enumerate(recs[:5]):
+            cols = st.columns(7)
+            for i, rec in enumerate(recs[:7]):
                 rec_tmdb = rec_tmdbs[i]
                 with cols[i]:
                     render_poster(rec['Title'], rec_tmdb['poster_url'])
