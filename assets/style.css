@@ -624,3 +624,32 @@ hr {
     transform: scale(1.03);
     box-shadow: 0 8px 30px rgba(229, 9, 20, 0.20);
 }
+
+/* ==========================================
+   HORIZONTAL SCROLL CAROUSEL
+   ========================================== */
+div[data-testid="stVerticalBlock"] > div:has(.scroll-carousel) + div[data-testid="stHorizontalBlock"] {
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    padding-bottom: 20px;
+    scroll-snap-type: x mandatory;
+    gap: 16px;
+}
+div[data-testid="stVerticalBlock"] > div:has(.scroll-carousel) + div[data-testid="stHorizontalBlock"] > div {
+    min-width: 260px !important;
+    max-width: 300px !important;
+    flex: 0 0 auto !important;
+    scroll-snap-align: start;
+}
+/* Hide scrollbar for a cleaner look */
+div[data-testid="stVerticalBlock"] > div:has(.scroll-carousel) + div[data-testid="stHorizontalBlock"]::-webkit-scrollbar {
+    height: 8px;
+}
+div[data-testid="stVerticalBlock"] > div:has(.scroll-carousel) + div[data-testid="stHorizontalBlock"]::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+div[data-testid="stVerticalBlock"] > div:has(.scroll-carousel) + div[data-testid="stHorizontalBlock"]::-webkit-scrollbar-thumb {
+    background: #e50914;
+    border-radius: 4px;
+}

@@ -284,41 +284,15 @@ with tab1:
         
         if recs:
             # ==========================================
-            # 📱 MOBILE-ONLY: CUSTOM HTML CAROUSEL
+            # 🎬 HORIZONTAL SCROLLING CAROUSEL
             # ==========================================
-            carousel_html = '<div class="mobile-netflix-carousel">'
-            
-            logging.info("UI: Fetching TMDB details for hybrid recommendations")
-            rec_tmdbs = [get_cached_tmdb_movie_details(r['Title']) for r in recs[:5]]
-            
-            for i, rec in enumerate(recs[:5]):
-                rec_tmdb = rec_tmdbs[i]
-                poster = rec_tmdb.get('poster_url') or "https://via.placeholder.com/500x750/1d1e26/e50914?text=No+Poster"
-                title = rec['Title']
-                
-                avg_rating = rec.get('AvgRating')
-                if avg_rating is None:
-                    m_row = recommender.movies_df[recommender.movies_df['MovieID'] == rec['MovieID']]
-                    avg_rating = m_row.iloc[0]['AvgRating'] if not m_row.empty else 0
-
-                carousel_html += f"""
-<div class="carousel-card">
-    <img src="{poster}" alt="{title}" class="carousel-poster">
-    <div class="carousel-title">{title}</div>
-    <div class="carousel-rating">⭐ {avg_rating:.1f}/5</div>
-</div>
-"""
-            carousel_html += '</div>'
-            st.markdown(carousel_html, unsafe_allow_html=True)
-
-            # ==========================================
-            # 💻 DESKTOP-ONLY: STREAMLIT COLUMNS
-            # ==========================================
-            st.markdown('<div class="desktop-grid"></div>', unsafe_allow_html=True)
-            cols = st.columns(5)
+            st.markdown('<div class="scroll-carousel"></div>', unsafe_allow_html=True)
+            cols = st.columns(len(recs))
             logging.info("UI: TMDB details fetched, rendering grid")
             
-            for i, rec in enumerate(recs[:5]):
+            rec_tmdbs = [get_cached_tmdb_movie_details(r['Title']) for r in recs]
+            
+            for i, rec in enumerate(recs):
                 rec_tmdb = rec_tmdbs[i]
                 with cols[i]:
                     render_poster(rec['Title'], rec_tmdb['poster_url'])
@@ -419,9 +393,9 @@ with tab1:
             tmdb_similar = get_cached_tmdb_similar_movies(tmdb_data.get('id'))
             
             if tmdb_similar:
-                st.markdown('<div class="mobile-poster-grid"></div>', unsafe_allow_html=True)
-                t_cols = st.columns(5)
-                for i, tmdb_rec in enumerate(tmdb_similar[:5]):
+                st.markdown('<div class="scroll-carousel"></div>', unsafe_allow_html=True)
+                t_cols = st.columns(len(tmdb_similar))
+                for i, tmdb_rec in enumerate(tmdb_similar):
                     with t_cols[i]:
                         render_poster(tmdb_rec.get('title', 'Unknown'), tmdb_rec.get('poster_url', ''))
                         st.markdown(f"**{tmdb_rec.get('title', tmdb_rec.get('name', 'Unknown'))}**")
@@ -430,9 +404,9 @@ with tab1:
     # TRENDING SECTION
     st.markdown("---")
     st.markdown("### 🔥 Trending Movies")
-    trending = recommender.get_trending(5)
-    st.markdown('<div class="mobile-poster-grid"></div>', unsafe_allow_html=True)
-    cols = st.columns(5)
+    trending = recommender.get_trending(10)
+    st.markdown('<div class="scroll-carousel"></div>', unsafe_allow_html=True)
+    cols = st.columns(len(trending))
     
     trending_tmdbs = [get_cached_tmdb_movie_details(t['Title']) for t in trending]
     
@@ -446,8 +420,8 @@ with tab1:
     # RECENT SEARCHES
     if st.session_state.recent_searches:
         st.markdown("### 🕒 Recently Searched")
-        st.markdown('<div class="mobile-poster-grid"></div>', unsafe_allow_html=True)
-        r_cols = st.columns(5)
+        st.markdown('<div class="scroll-carousel"></div>', unsafe_allow_html=True)
+        r_cols = st.columns(len(st.session_state.recent_searches))
         for i, r_movie in enumerate(st.session_state.recent_searches):
             r_tmdb = get_cached_tmdb_movie_details(r_movie['Title'])
             with r_cols[i]:
