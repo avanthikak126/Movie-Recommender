@@ -358,8 +358,8 @@ with tab1:
             
             if tmdb_similar:
                 st.markdown('<div class="mobile-poster-grid"></div>', unsafe_allow_html=True)
-                t_cols = st.columns(5)
-                for i, tmdb_rec in enumerate(tmdb_similar[:5]):
+                t_cols = st.columns(7)
+                for i, tmdb_rec in enumerate(tmdb_similar[:7]):
                     with t_cols[i]:
                         render_poster(tmdb_rec.get('title', 'Unknown'), tmdb_rec.get('poster_url', ''))
                         st.markdown(f"**{tmdb_rec.get('title', tmdb_rec.get('name', 'Unknown'))}**")
@@ -368,9 +368,9 @@ with tab1:
     # TRENDING SECTION
     st.markdown("---")
     st.markdown("### 🔥 Trending Movies")
-    trending = recommender.get_trending(5)
+    trending = recommender.get_trending(7)
     st.markdown('<div class="mobile-poster-grid"></div>', unsafe_allow_html=True)
-    cols = st.columns(5)
+    cols = st.columns(7)
     
     trending_tmdbs = [get_cached_tmdb_movie_details(t['Title']) for t in trending]
     
@@ -385,7 +385,7 @@ with tab1:
     if st.session_state.recent_searches:
         st.markdown("### 🕒 Recently Searched")
         st.markdown('<div class="mobile-poster-grid"></div>', unsafe_allow_html=True)
-        r_cols = st.columns(5)
+        r_cols = st.columns(7)
         for i, r_movie in enumerate(st.session_state.recent_searches):
             r_tmdb = get_cached_tmdb_movie_details(r_movie['Title'])
             with r_cols[i]:
