@@ -311,52 +311,6 @@ with tab1:
             carousel_html += '</div>'
             st.markdown(carousel_html, unsafe_allow_html=True)
 
-            # ==========================================
-            # 💻 DESKTOP-ONLY: STREAMLIT COLUMNS
-            # ==========================================
-            st.markdown('<div class="desktop-grid"></div>', unsafe_allow_html=True)
-            cols = st.columns(5)
-            logging.info("UI: TMDB details fetched, rendering grid")
-            
-            for i, rec in enumerate(recs[:5]):
-                rec_tmdb = rec_tmdbs[i]
-                with cols[i]:
-                    render_poster(rec['Title'], rec_tmdb['poster_url'])
-                    st.markdown(f"**{rec['Title']}**")
-                    st.markdown(f"**Genres:** {rec['Genres']}")
-                    
-                    avg_rating = rec.get('AvgRating')
-                    if avg_rating is None:
-                        m_row = recommender.movies_df[recommender.movies_df['MovieID'] == rec['MovieID']]
-                        avg_rating = m_row.iloc[0]['AvgRating'] if not m_row.empty else 0
-                    st.markdown(f"⭐ {avg_rating:.1f}/5")
-
-                    sim = rec.get('similarity')
-                    if sim is not None:
-                        st.markdown(f"🎯 **Similarity:** {sim}%")
-                    else:
-                        c_sim = rec.get('Content Similarity Score', 0)
-                        st.markdown(f"🎯 **Similarity:** {int(c_sim * 100)}%")
-
-                    if st.button( "⭐ Add to Watchlist",
-                        key=f"watch_{rec['MovieID']}",
-                        width="stretch"
-                    ):
-                        if "username" in st.session_state:
-                            added = add_to_watchlist(
-                                st.session_state["username"],
-                                rec["MovieID"],
-                                rec["Title"]
-                            )
-                            if added:
-                                st.success("Added to Watchlist!")
-                            else:
-                                st.info("Movie already in Watchlist")
-                        else:
-                            st.warning("Please login first.")
-
-                    with st.expander("Why Recommended?"):
-                        render_why_recommended(rec)
 
         if st.button("⚡ Run Performance Benchmark", width="stretch", key="run_benchmark_btn"):
             st.session_state.show_performance_benchmark = True
