@@ -624,3 +624,45 @@ hr {
     transform: scale(1.03);
     box-shadow: 0 8px 30px rgba(229, 9, 20, 0.20);
 }
+
+/* ==========================================
+   HORIZONTAL SCROLL CAROUSEL
+   ========================================== */
+.mobile-netflix-carousel {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 1rem;
+    padding: 1rem 0;
+    scrollbar-width: thin;
+}
+
+.mobile-netflix-carousel::-webkit-scrollbar {
+    height: 6px;
+}
+
+.mobile-netflix-carousel::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+    border-radius: 3px;
+}
+
+.carousel-card {
+    flex: 0 0 auto;
+    width: 180px;
+}
+
+.carousel-poster {
+    width: 100%;
+    border-radius: 8px;
+}
+
+.carousel-title {
+    margin-top: 0.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.carousel-rating {
+    font-size: 0.85rem;
+    color: #ccc;
+}
