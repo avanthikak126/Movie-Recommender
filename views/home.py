@@ -302,12 +302,12 @@ with tab1:
                     avg_rating = m_row.iloc[0]['AvgRating'] if not m_row.empty else 0
 
                 carousel_html += f"""
-                <div class="carousel-card">
-                    <img src="{poster}" alt="{title}" class="carousel-poster">
-                    <div class="carousel-title">{title}</div>
-                    <div class="carousel-rating">⭐ {avg_rating:.1f}/5</div>
-                </div>
-                """
+<div class="carousel-card">
+    <img src="{poster}" alt="{title}" class="carousel-poster">
+    <div class="carousel-title">{title}</div>
+    <div class="carousel-rating">⭐ {avg_rating:.1f}/5</div>
+</div>
+"""
             carousel_html += '</div>'
             st.markdown(carousel_html, unsafe_allow_html=True)
 
