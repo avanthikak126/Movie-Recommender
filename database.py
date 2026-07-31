@@ -20,42 +20,56 @@ DB_HOST = get_secret('DB_HOST')
 DB_PORT = get_secret('DB_PORT')
 DB_NAME = get_secret('DB_NAME')
 
-DATABASE_URL = (
-    f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}"
-    f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
+from sqlalchemy.engine import URL
 
-engine = create_engine(DATABASE_URL)
-
-with engine.connect() as conn:
-    conn.execute(text("""
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(50) UNIQUE NOT NULL,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            password VARCHAR(255) NOT NULL,
-            failed_login_attempts INTEGER DEFAULT 0,
-            locked_until TIMESTAMP
+if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
+    st.error("Database credentials are not set. Please add them to your Streamlit secrets.")
+else:
+    try:
+        url_object = URL.create(
+            "postgresql+pg8000",
+            username=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            port=DB_PORT,
+            database=DB_NAME,
         )
-    """))
+        engine = create_engine(url_object)
+        
+        with engine.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(50) UNIQUE NOT NULL,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    failed_login_attempts INTEGER DEFAULT 0,
+                    locked_until TIMESTAMP
+                )
+            """))
 
-    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER DEFAULT 0"))
-    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER DEFAULT 0"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP"))
 
-    conn.execute(text("""
-        CREATE TABLE IF NOT EXISTS watchlist (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(50),
-            movie_id INTEGER,
-            movie_title VARCHAR(255)
-        )
-    """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS watchlist (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(50),
+                    movie_id INTEGER,
+                    movie_title VARCHAR(255)
+                )
+            """))
 
-    conn.execute(text("""
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_watchlist_user_movie_unique
-        ON watchlist (username, movie_id)
-    """))
+            conn.execute(text("""
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_watchlist_user_movie_unique
+                ON watchlist (username, movie_id)
+            """))
 
-    conn.commit()
-
-print("Watchlist table created!")
+            conn.commit()
+            print("Watchlist table created!")
+            
+    except Exception as e:
+        st.error(f"Failed to connect to the database: {e}")
+        # We define a dummy engine so imports don't fail immediately, though queries will fail.
+        DATABASE_URL = "sqlite:///:memory:"
+        engine = create_engine(DATABASE_URL)
