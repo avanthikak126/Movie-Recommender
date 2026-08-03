@@ -740,8 +740,9 @@ hr {
         letter-spacing: 1.5px;
     }
 
-    /* --- Movie Poster Rows: Convert st.columns to horizontal scroll --- */
-    div[data-testid="stHorizontalBlock"] {
+    /* --- Movie Poster Rows: Convert st.columns to horizontal scroll ---
+       Scoped to blocks containing images so auth-button rows are not affected. */
+    div[data-testid="stHorizontalBlock"]:has(.stImage) {
         display: flex !important;
         flex-wrap: nowrap !important;
         overflow-x: auto !important;
@@ -752,16 +753,32 @@ hr {
         scrollbar-width: none;
     }
 
-    div[data-testid="stHorizontalBlock"]::-webkit-scrollbar {
+    div[data-testid="stHorizontalBlock"]:has(.stImage)::-webkit-scrollbar {
         display: none;
     }
 
-    div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+    div[data-testid="stHorizontalBlock"]:has(.stImage) > div[data-testid="stColumn"] {
         flex: 0 0 140px !important;
         min-width: 140px !important;
         max-width: 140px !important;
         width: 140px !important;
         scroll-snap-align: start;
+    }
+
+    /* --- Auth button row: keep centered on mobile --- */
+    div[data-testid="stHorizontalBlock"]:has(.stButton) {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 12px !important;
+        overflow-x: visible !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.stButton) > div[data-testid="stColumn"] {
+        flex: 1 1 40% !important;
+        min-width: 120px !important;
+        max-width: 48% !important;
+        width: auto !important;
     }
 
     /* --- Poster Images --- */
@@ -916,11 +933,20 @@ hr {
         padding: 12px 8px;
     }
 
-    div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+    /* Poster columns only — scoped to blocks with images */
+    div[data-testid="stHorizontalBlock"]:has(.stImage) > div[data-testid="stColumn"] {
         flex: 0 0 120px !important;
         min-width: 120px !important;
         max-width: 120px !important;
         width: 120px !important;
+    }
+
+    /* Auth button row stays centered */
+    div[data-testid="stHorizontalBlock"]:has(.stButton) > div[data-testid="stColumn"] {
+        flex: 1 1 45% !important;
+        min-width: 100px !important;
+        max-width: 48% !important;
+        width: auto !important;
     }
 
     div[data-testid="stColumn"] p,
