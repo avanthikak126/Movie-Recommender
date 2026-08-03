@@ -1,7 +1,11 @@
+import logging
+import os
+
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
-import os
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -54,9 +58,9 @@ else:
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS watchlist (
                     id SERIAL PRIMARY KEY,
-                    username VARCHAR(50),
-                    movie_id INTEGER,
-                    movie_title VARCHAR(255)
+                    username VARCHAR(50) NOT NULL,
+                    movie_id INTEGER NOT NULL,
+                    movie_title VARCHAR(255) NOT NULL
                 )
             """))
 
@@ -66,7 +70,7 @@ else:
             """))
 
             conn.commit()
-            print("Watchlist table created!")
+            logger.info("Database tables verified/created successfully.")
             
     except Exception as e:
         st.error(f"Failed to connect to the database: {e}")

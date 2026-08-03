@@ -1,6 +1,7 @@
 import sys
 import traceback
-from auth import create_user, login_user, engine
+from auth import create_user, login_user
+from database import engine
 from sqlalchemy import text
 
 def run_test(name, func, expect_exception=False, expected_exception_type=None):

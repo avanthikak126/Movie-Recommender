@@ -14,12 +14,18 @@ with st.form("signup_form"):
     submitted = st.form_submit_button("Sign Up")
 
 if submitted:
-    try:
-        create_user(username, email, password)
-    except ValueError as e:
-        st.error(str(e))
-    except Exception:
-        st.error("Unable to create account. Please try again.")
+    username = username.strip()
+    email = email.strip()
+    if not username or not email or not password:
+        st.error("Please fill in all fields.")
     else:
-        st.session_state["signup_success_message"] = "Account created successfully! Please log in."
-        st.switch_page("views/login.py")
+        try:
+            create_user(username, email, password)
+        except ValueError as e:
+            st.error(str(e))
+        except Exception:
+            st.error("Unable to create account. Please try again.")
+        else:
+            st.session_state["signup_success_message"] = "Account created successfully! Please log in."
+            st.switch_page("views/login.py")
+
